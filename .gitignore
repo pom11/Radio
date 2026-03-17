@@ -1,0 +1,14 @@
+.build/
+build/
+.swiftpm/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+__pycache__/
+*.pyc
+.superpowers/
+config/
+/streams.json
+radio.pem
+.DS_Store
+release.sh
