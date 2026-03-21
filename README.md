@@ -71,7 +71,7 @@ Contributions are welcome — whether it's new features, bug fixes, or stream fo
 brew install --cask pom11/tap/radio
 ```
 
-Signed and notarized — no Gatekeeper warnings, no `xattr` workarounds. Installs directly to `/Applications`.
+Signed and notarized — no Gatekeeper warnings, no `xattr` workarounds. Installs directly to `/Applications`. Automatically installs required dependencies: `ffmpeg`, `yt-dlp`, and `streamlink`.
 
 ### From source
 
@@ -84,6 +84,11 @@ Requires Xcode Command Line Tools, ffmpeg, yt-dlp, and streamlink (`make setup` 
 ### Requirements
 
 - macOS 14.0+ (Sonoma or later)
+- [ffmpeg](https://formulae.brew.sh/formula/ffmpeg) — Chromecast HLS-to-MP4 proxy
+- [yt-dlp](https://formulae.brew.sh/formula/yt-dlp) — YouTube, Twitch, Kick, and 1000+ site support
+- [streamlink](https://formulae.brew.sh/formula/streamlink) — DASH-to-HLS conversion, live TV streams
+
+> Installed automatically via `brew install --cask pom11/tap/radio`. If any are missing, Radio shows a setup guide on launch.
 
 ## Usage
 
