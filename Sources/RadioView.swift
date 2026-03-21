@@ -744,6 +744,7 @@ struct ExtensionsDetail: View {
 
 struct AboutDetail: View {
     @State private var updateStatus: String?
+    @State private var autoCheckEnabled = UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool ?? true
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
@@ -787,11 +788,17 @@ struct AboutDetail: View {
             }
 
             Section {
+                Toggle("Check for updates on launch", isOn: $autoCheckEnabled)
+                    .onChange(of: autoCheckEnabled) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "autoCheckForUpdates")
+                    }
                 HStack {
                     Button {
-                        checkForUpdate()
+                        UpdateChecker.check { status in
+                            updateStatus = status
+                        }
                     } label: {
-                        Text("Check for Updates")
+                        Text("Check Now")
                     }
                     Spacer()
                     if let status = updateStatus {
@@ -803,16 +810,27 @@ struct AboutDetail: View {
             } header: {
                 Text("Updates")
             } footer: {
-                Text("Run `brew upgrade radio` to update.")
+                Text("Run `brew upgrade --cask radio` to update.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("About")
+        .onAppear {
+            if let cached = UpdateChecker.lastStatus {
+                updateStatus = cached
+            }
+        }
     }
+}
 
-    private func checkForUpdate() {
-        updateStatus = "Checking..."
+// MARK: - Update Checker
+
+enum UpdateChecker {
+    static var lastStatus: String?
+
+    static func check(completion: ((String) -> Void)? = nil) {
+        completion?("Checking...")
         Task {
             do {
                 let url = URL(string: "https://api.github.com/repos/pom11/Radio/releases/latest")!
@@ -820,20 +838,26 @@ struct AboutDetail: View {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let tag = json["tag_name"] as? String {
                     let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-                    await MainActor.run {
-                        if latest == appVersion {
-                            updateStatus = "Up to date ✓"
-                        } else {
-                            updateStatus = "v\(latest) available"
-                        }
+                    let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+                    let status: String
+                    if latest == appVersion {
+                        status = "Up to date"
+                    } else {
+                        status = "v\(latest) available"
                     }
+                    lastStatus = status
+                    UserDefaults.standard.set(Date(), forKey: "lastUpdateCheck")
+                    await MainActor.run { completion?(status) }
                 }
             } catch {
-                await MainActor.run {
-                    updateStatus = "Check failed"
-                }
+                await MainActor.run { completion?("Check failed") }
             }
         }
+    }
+
+    static func checkOnLaunchIfNeeded() {
+        guard UserDefaults.standard.object(forKey: "autoCheckForUpdates") as? Bool ?? true else { return }
+        check()
     }
 }
 

@@ -54,6 +54,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Check for crash reports from previous sessions
         checkForCrashReports()
+
+        // Check for updates on launch if enabled
+        UpdateChecker.checkOnLaunchIfNeeded()
     }
 
     func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
