@@ -46,7 +46,7 @@ final class CastProxy: @unchecked Sendable {
 
     // MARK: - ffmpeg Discovery
 
-    private static let ffmpegPath: String = {
+    private static let ffmpegPath: String? = {
         let candidates = [
             "/opt/homebrew/bin/ffmpeg",
             "/usr/local/bin/ffmpeg",
@@ -56,7 +56,7 @@ final class CastProxy: @unchecked Sendable {
                 return path
             }
         }
-        return "ffmpeg"
+        return nil
     }()
 
     // MARK: - Local IP
@@ -242,8 +242,13 @@ final class CastProxy: @unchecked Sendable {
     // MARK: - Streaming
 
     private func serveStream(_ connection: NWConnection) {
+        guard let path = CastProxy.ffmpegPath else {
+            logger.error("ffmpeg not found — Chromecast proxy requires ffmpeg")
+            send502(connection)
+            return
+        }
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: CastProxy.ffmpegPath)
+        process.executableURL = URL(fileURLWithPath: path)
         var args = [
             "-reconnect", "1",
             "-reconnect_streamed", "1",

@@ -57,6 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Check for updates on launch if enabled
         UpdateChecker.checkOnLaunchIfNeeded()
+
+        // Check required CLI dependencies
+        checkDependencies()
     }
 
     func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
@@ -72,6 +75,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         playerManager.stopAll()
         OutputManager.shared.shutdownAll()
+    }
+
+    // MARK: - Dependency Check
+
+    private func checkDependencies() {
+        let tools = ["ffmpeg", "yt-dlp", "streamlink"]
+        let searchPaths = ["/opt/homebrew/bin", "/usr/local/bin"]
+        let fm = FileManager.default
+
+        let missing = tools.filter { tool in
+            !searchPaths.contains { fm.fileExists(atPath: "\($0)/\(tool)") }
+        }
+
+        guard !missing.isEmpty else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            let installCmd = "brew install \(missing.joined(separator: " "))"
+            let bullets = missing.map { "• \($0)" }.joined(separator: "\n")
+
+            let alert = NSAlert()
+            alert.messageText = "Missing Dependencies"
+            alert.informativeText = "Radio requires the following tools to work properly:\n\n"
+                + bullets
+                + "\n\nTo install them:\n\n"
+                + "1. Open Terminal (or your terminal of choice)\n"
+                + "2. Paste the following command and press Return:\n\n"
+                + installCmd
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Copy Command & Open Terminal")
+            alert.addButton(withTitle: "Copy Command")
+            alert.addButton(withTitle: "Dismiss")
+
+            let response = alert.runModal()
+            switch response {
+            case .alertFirstButtonReturn:
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(installCmd, forType: .string)
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+            case .alertSecondButtonReturn:
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(installCmd, forType: .string)
+            default:
+                break
+            }
+        }
     }
 
     // MARK: - Crash Detection

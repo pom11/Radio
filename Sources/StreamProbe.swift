@@ -305,8 +305,7 @@ enum StreamProbe {
                 return path
             }
         }
-        toolCache[name] = name
-        return name
+        return nil
     }
 
     // MARK: - Process Runner
