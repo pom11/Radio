@@ -302,7 +302,7 @@ final class CastProxy: @unchecked Sendable {
             if initData.isEmpty {
                 let errData = stderr.fileHandleForReading.readData(ofLength: 4096)
                 let errMsg = String(data: errData, encoding: .utf8) ?? "unknown"
-                self.logger.error("ffmpeg produced no output (attempt \(attempt)/\(maxAttempts)): \(errMsg)")
+                self.logger.error("ffmpeg produced no output (attempt \(attempt)/\(maxAttempts)): \(errMsg, privacy: .public)")
                 process.terminate()
                 process.waitUntilExit()
                 self.untrackProcess(process)
