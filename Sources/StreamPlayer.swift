@@ -25,6 +25,7 @@ final class StreamPlayer: NSObject, ObservableObject {
     private var previousVolume: Float = 0.5
     private var cancellables = Set<AnyCancellable>()
     private var reconnectTask: DispatchWorkItem?
+    private var nudgeTask: DispatchWorkItem?
     private var playTask: Task<Void, Never>?
     private var lastResolveResult: ResolveResult?
     private var volumeSaveTask: DispatchWorkItem?
@@ -147,9 +148,13 @@ final class StreamPlayer: NSObject, ObservableObject {
         newPlayer.volume = separateControls ? volume : 1.0
         if isMuted { newPlayer.volume = 0; newPlayer.isMuted = true }
 
-        // Live streams: small buffer, don't wait to minimize stalling
+        // Live streams: tune buffer based on stream type
         if result.is_live {
-            item.preferredForwardBufferDuration = 5
+            if headerProxy != nil {
+                item.preferredForwardBufferDuration = 30
+            } else {
+                item.preferredForwardBufferDuration = 5
+            }
             newPlayer.automaticallyWaitsToMinimizeStalling = false
         }
 
@@ -174,6 +179,8 @@ final class StreamPlayer: NSObject, ObservableObject {
         playTask = nil
         reconnectTask?.cancel()
         reconnectTask = nil
+        nudgeTask?.cancel()
+        nudgeTask = nil
         volumeSaveTask?.cancel()
         volumeSaveTask = nil
         cancellables.removeAll()
@@ -314,22 +321,53 @@ final class StreamPlayer: NSObject, ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] status in
                 guard let self else { return }
-                if status == .paused && self.isPlaying {
-                    self.scheduleReconnect()
+                switch status {
+                case .paused where self.isPlaying,
+                     .waitingToPlayAtSpecifiedRate where self.isPlaying:
+                    if self.headerProxy != nil {
+                        // Proxied streams on flaky CDNs: nudge rate every 3s to
+                        // help AVPlayer resume. Full reconnect only after 30s.
+                        self.startNudging()
+                        self.scheduleReconnect(delay: 30)
+                    } else {
+                        let delay: TimeInterval = (status == .paused) ? 8 : 20
+                        self.scheduleReconnect(delay: delay)
+                    }
+                case .playing:
+                    self.reconnectTask?.cancel()
+                    self.reconnectTask = nil
+                    self.nudgeTask?.cancel()
+                    self.nudgeTask = nil
+                default:
+                    break
                 }
             }
             .store(in: &cancellables)
     }
 
-    private func scheduleReconnect() {
+    private func startNudging() {
+        guard nudgeTask == nil else { return }
+        let task = DispatchWorkItem { [weak self] in
+            guard let self, self.isPlaying else { return }
+            self.nudgeTask = nil
+            if self.avPlayer?.timeControlStatus != .playing {
+                self.avPlayer?.rate = 1.0
+                self.startNudging()
+            }
+        }
+        nudgeTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: task)
+    }
+
+    private func scheduleReconnect(delay: TimeInterval) {
         reconnectTask?.cancel()
         let task = DispatchWorkItem { [weak self] in
             guard let self, self.isPlaying,
-                  self.avPlayer?.timeControlStatus == .paused else { return }
+                  self.avPlayer?.timeControlStatus != .playing else { return }
             self.reconnect()
         }
         reconnectTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: task)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: task)
     }
 
     private func reconnect() {

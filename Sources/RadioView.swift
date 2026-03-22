@@ -766,12 +766,20 @@ struct AboutDetail: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("App Version", value: "v\(appVersion)")
-                LabeledContent("Build", value: buildNumber)
+                HStack(spacing: 12) {
+                    if let icon = NSImage(named: "AppIcon") {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .frame(width: 64, height: 64)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Radio").font(.headline)
+                        Text("v\(appVersion)").foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
                 LabeledContent("Extension Version", value: extensionVersion)
                 LabeledContent("Bundle ID", value: Bundle.main.bundleIdentifier ?? "?")
-            } header: {
-                Text("Version")
             }
 
             Section {
@@ -783,8 +791,6 @@ struct AboutDetail: View {
                         .textSelection(.enabled)
                 }
                 LabeledContent("License", value: "MIT")
-            } header: {
-                Text("Project")
             }
 
             Section {
@@ -792,7 +798,7 @@ struct AboutDetail: View {
                     .onChange(of: autoCheckEnabled) { _, newValue in
                         UserDefaults.standard.set(newValue, forKey: "autoCheckForUpdates")
                     }
-                HStack {
+                HStack(spacing: 8) {
                     Button {
                         UpdateChecker.check { status in
                             updateStatus = status
@@ -800,7 +806,6 @@ struct AboutDetail: View {
                     } label: {
                         Text("Check Now")
                     }
-                    Spacer()
                     if let status = updateStatus {
                         Text(status)
                             .font(.caption)

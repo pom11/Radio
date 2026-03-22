@@ -242,6 +242,10 @@ final class CastProxy: @unchecked Sendable {
     // MARK: - Streaming
 
     private func serveStream(_ connection: NWConnection) {
+        serveStreamAttempt(connection: connection, attempt: 1)
+    }
+
+    private func serveStreamAttempt(connection: NWConnection, attempt: Int) {
         guard let path = CastProxy.ffmpegPath else {
             logger.error("ffmpeg not found — Chromecast proxy requires ffmpeg")
             send502(connection)
@@ -252,12 +256,16 @@ final class CastProxy: @unchecked Sendable {
         var args = [
             "-reconnect", "1",
             "-reconnect_streamed", "1",
+            "-reconnect_delay_max", "3",
             "-user_agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
         ]
         if !httpHeaders.isEmpty {
             let headerString = httpHeaders.map { "\($0.key): \($0.value)\r\n" }.joined()
             args += ["-headers", headerString]
         }
+        // Disable strict extension checks — pirate IPTV streams use
+        // non-standard segment URLs (.htm, auth tokens, no extension)
+        args += ["-extension_picky", "0"]
         args += [
             "-i", hlsURL,
             "-c", "copy",
@@ -285,27 +293,35 @@ final class CastProxy: @unchecked Sendable {
         trackProcess(process)
 
         // Stream on a background thread (blocking reads from ffmpeg)
+        let maxAttempts = 3
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.streamLoop(stdout: stdout, stderr: stderr, process: process, connection: connection)
+            guard let self else { return }
+            let fileHandle = stdout.fileHandleForReading
+
+            let initData = fileHandle.readData(ofLength: 65536)
+            if initData.isEmpty {
+                let errData = stderr.fileHandleForReading.readData(ofLength: 4096)
+                let errMsg = String(data: errData, encoding: .utf8) ?? "unknown"
+                self.logger.error("ffmpeg produced no output (attempt \(attempt)/\(maxAttempts)): \(errMsg, privacy: .public)")
+                process.terminate()
+                process.waitUntilExit()
+                self.untrackProcess(process)
+
+                if attempt < maxAttempts {
+                    self.logger.info("Retrying ffmpeg (attempt \(attempt + 1)/\(maxAttempts))...")
+                    Thread.sleep(forTimeInterval: 1)
+                    self.serveStreamAttempt(connection: connection, attempt: attempt + 1)
+                } else {
+                    self.send502(connection)
+                }
+                return
+            }
+
+            self.streamFromInit(initData: initData, fileHandle: fileHandle, process: process, connection: connection)
         }
     }
 
-    private func streamLoop(stdout: Pipe, stderr: Pipe, process: Process, connection: NWConnection) {
-        let fileHandle = stdout.fileHandleForReading
-
-        // Read initial segment — ffmpeg needs a moment to produce the ftyp+moov atoms
-        let initData = fileHandle.readData(ofLength: 65536)
-        guard !initData.isEmpty else {
-            let errData = stderr.fileHandleForReading.readData(ofLength: 4096)
-            let errMsg = String(data: errData, encoding: .utf8) ?? "unknown"
-            logger.error("ffmpeg produced no output: \(errMsg)")
-            process.terminate()
-            process.waitUntilExit()
-            untrackProcess(process)
-            send502(connection)
-            return
-        }
-
+    private func streamFromInit(initData: Data, fileHandle: FileHandle, process: Process, connection: NWConnection) {
         // Send HTTP response header + init segment
         let header = "HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n"
         let headerData = Data(header.utf8)

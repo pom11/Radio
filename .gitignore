@@ -7,6 +7,7 @@ DerivedData/
 __pycache__/
 *.pyc
 .superpowers/
+docs/superpowers/
 config/
 /streams.json
 radio.pem

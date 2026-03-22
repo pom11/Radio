@@ -278,7 +278,7 @@ private final class CastConnection: @unchecked Sendable {
 
         connection.send(content: frame, completion: .contentProcessed { [weak self] error in
             if let error {
-                self?.logger.error("Send error: \(error.localizedDescription)")
+                self?.logger.error("Send error (\(namespace, privacy: .public) → \(destination, privacy: .public)): \(error.localizedDescription, privacy: .public)")
             }
         })
     }
@@ -353,6 +353,7 @@ private final class CastConnection: @unchecked Sendable {
     private func waitForMessage(
         namespace: String? = nil,
         containingType type: String? = nil,
+        containing substring: String? = nil,
         timeout: TimeInterval = 10
     ) async -> CastProtobuf.DecodedCastMessage? {
         let deadline = Date().addingTimeInterval(timeout)
@@ -361,6 +362,7 @@ private final class CastConnection: @unchecked Sendable {
             if let idx = receivedMessages.firstIndex(where: { msg in
                 if let ns = namespace, msg.namespace != ns { return false }
                 if let t = type, !msg.payloadUTF8.contains("\"\(t)\"") { return false }
+                if let s = substring, !msg.payloadUTF8.contains(s) { return false }
                 return true
             }) {
                 let msg = receivedMessages.remove(at: idx)
@@ -390,8 +392,9 @@ private final class CastConnection: @unchecked Sendable {
         let payload = #"{"type":"LAUNCH","appId":"\#(appId)","requestId":\#(rid)}"#
         sendMessage(namespace: Namespace.receiver, destination: "receiver-0", payload: payload)
 
-        // Wait for RECEIVER_STATUS with transport ID
-        guard let msg = await waitForMessage(namespace: Namespace.receiver, containingType: "RECEIVER_STATUS", timeout: 15) else {
+        // Wait for RECEIVER_STATUS that has applications (skip idle status broadcasts)
+        guard let msg = await waitForMessage(namespace: Namespace.receiver, containingType: "RECEIVER_STATUS", containing: "\"applications\"", timeout: 15) else {
+            logger.error("launchApp: no RECEIVER_STATUS within 15s")
             throw CastError.launchFailed
         }
 
@@ -403,6 +406,7 @@ private final class CastConnection: @unchecked Sendable {
               let app = apps.first,
               let tid = app["transportId"] as? String
         else {
+            logger.error("launchApp: RECEIVER_STATUS missing transportId")
             throw CastError.launchFailed
         }
 
@@ -777,9 +781,6 @@ final class CastController: @unchecked Sendable {
     // MARK: - Public API
 
     func cast(url: String, to device: CastDevice, contentType: String? = nil, streamType: String? = nil) async throws {
-        // Fresh connection for each cast to avoid stale state
-        removeConnection(for: device)
-        let conn = try await getConnection(for: device)
         let ct = contentType ?? CastController.detectContentType(url)
         let st: String
         if let streamType {
@@ -789,8 +790,25 @@ final class CastController: @unchecked Sendable {
         } else {
             st = "BUFFERED"
         }
-        try await conn.loadMedia(url: url, contentType: ct, streamType: st)
-        logger.debug("Casting [\(ct), \(st)] to \(device.name)")
+
+        // Retry up to 3 times — Chromecast may not respond after rapid reconnection
+        var lastError: Error?
+        for attempt in 1...3 {
+            do {
+                removeConnection(for: device)
+                if attempt > 1 {
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+                let conn = try await getConnection(for: device)
+                try await conn.loadMedia(url: url, contentType: ct, streamType: st)
+                logger.debug("Casting [\(ct), \(st)] to \(device.name)")
+                return
+            } catch {
+                lastError = error
+                logger.warning("cast attempt \(attempt) failed: \(error)")
+            }
+        }
+        throw lastError ?? CastError.launchFailed
     }
 
     func castYouTube(videoId: String, to device: CastDevice) async throws {

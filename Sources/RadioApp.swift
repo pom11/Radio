@@ -79,26 +79,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Dependency Check
 
+    private struct ToolReq {
+        let name: String
+        let minVersion: String      // semver-ish: "7.0", "2025.01.01", "6.0"
+        let versionArgs: [String]   // args to get version output
+    }
+
+    private static let requiredTools: [ToolReq] = [
+        ToolReq(name: "ffmpeg",     minVersion: "7.0",        versionArgs: ["-version"]),
+        ToolReq(name: "yt-dlp",     minVersion: "2025.01.01", versionArgs: ["--version"]),
+        ToolReq(name: "streamlink", minVersion: "6.0",        versionArgs: ["--version"]),
+    ]
+
     private func checkDependencies() {
-        let tools = ["ffmpeg", "yt-dlp", "streamlink"]
         let searchPaths = ["/opt/homebrew/bin", "/usr/local/bin"]
         let fm = FileManager.default
 
-        let missing = tools.filter { tool in
-            !searchPaths.contains { fm.fileExists(atPath: "\($0)/\(tool)") }
+        var missing: [String] = []
+        var outdated: [(name: String, installed: String, minimum: String)] = []
+
+        for tool in Self.requiredTools {
+            guard let toolPath = searchPaths.first(where: { fm.fileExists(atPath: "\($0)/\(tool.name)") })
+                .map({ "\($0)/\(tool.name)" }) else {
+                missing.append(tool.name)
+                continue
+            }
+
+            // Get installed version
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: toolPath)
+            process.arguments = tool.versionArgs
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = FileHandle.nullDevice
+            guard (try? process.run()) != nil else { continue }
+            process.waitUntilExit()
+            let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+
+            guard let version = Self.parseVersion(output, tool: tool.name) else { continue }
+            if Self.compareVersions(version, tool.minVersion) == .orderedAscending {
+                outdated.append((tool.name, version, tool.minVersion))
+            }
         }
 
-        guard !missing.isEmpty else { return }
+        guard !missing.isEmpty || !outdated.isEmpty else { return }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            let installCmd = "brew install \(missing.joined(separator: " "))"
-            let bullets = missing.map { "• \($0)" }.joined(separator: "\n")
+            var bullets: [String] = []
+            for name in missing {
+                bullets.append("• \(name) (not installed)")
+            }
+            for item in outdated {
+                bullets.append("• \(item.name) \(item.installed) → requires \(item.minimum)+")
+            }
+
+            let upgradeNames = missing + outdated.map(\.name)
+            let installCmd = "brew upgrade \(upgradeNames.joined(separator: " "))"
 
             let alert = NSAlert()
-            alert.messageText = "Missing Dependencies"
+            alert.messageText = missing.isEmpty ? "Outdated Dependencies" : "Missing Dependencies"
             alert.informativeText = "Radio requires the following tools to work properly:\n\n"
-                + bullets
-                + "\n\nTo install them:\n\n"
+                + bullets.joined(separator: "\n")
+                + "\n\nTo fix:\n\n"
                 + "1. Open Terminal (or your terminal of choice)\n"
                 + "2. Paste the following command and press Return:\n\n"
                 + installCmd
@@ -120,6 +162,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 break
             }
         }
+    }
+
+    /// Extract version string from tool output.
+    /// - ffmpeg: "ffmpeg version 8.1 ..." → "8.1"
+    /// - yt-dlp: "2026.03.13" (entire output)
+    /// - streamlink: "streamlink 8.2.1" → "8.2.1"
+    private static func parseVersion(_ output: String, tool: String) -> String? {
+        let line = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .newlines).first ?? ""
+        switch tool {
+        case "ffmpeg":
+            // "ffmpeg version 8.1 Copyright ..."
+            // "ffmpeg version N-12345-g..." (git builds — extract N or skip)
+            guard let range = line.range(of: "version ") else { return nil }
+            let after = String(line[range.upperBound...])
+            let version = after.prefix(while: { $0.isNumber || $0 == "." })
+            if version.isEmpty || !version.first!.isNumber { return nil }
+            return String(version)
+        case "yt-dlp":
+            // Output is just "2026.03.13\n"
+            let version = line.prefix(while: { $0.isNumber || $0 == "." })
+            return version.isEmpty ? nil : String(version)
+        case "streamlink":
+            // "streamlink 8.2.1"
+            let parts = line.split(separator: " ")
+            return parts.count >= 2 ? String(parts[1]) : nil
+        default:
+            return nil
+        }
+    }
+
+    /// Compare dot-separated version strings numerically.
+    private static func compareVersions(_ a: String, _ b: String) -> ComparisonResult {
+        let partsA = a.split(separator: ".").compactMap { Int($0) }
+        let partsB = b.split(separator: ".").compactMap { Int($0) }
+        let count = max(partsA.count, partsB.count)
+        for i in 0..<count {
+            let va = i < partsA.count ? partsA[i] : 0
+            let vb = i < partsB.count ? partsB[i] : 0
+            if va < vb { return .orderedAscending }
+            if va > vb { return .orderedDescending }
+        }
+        return .orderedSame
     }
 
     // MARK: - Crash Detection
