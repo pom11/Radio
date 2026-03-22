@@ -147,9 +147,16 @@ final class StreamPlayer: NSObject, ObservableObject {
         newPlayer.volume = separateControls ? volume : 1.0
         if isMuted { newPlayer.volume = 0; newPlayer.isMuted = true }
 
-        // Live streams: small buffer, don't wait to minimize stalling
+        // Live streams: tune buffer based on stream type
         if result.is_live {
-            item.preferredForwardBufferDuration = 5
+            if headerProxy != nil {
+                // Proxied streams (HLS with custom headers) have higher per-segment
+                // latency due to redirect chains and full-segment buffering.
+                // Use a larger buffer to absorb CDN variance.
+                item.preferredForwardBufferDuration = 20
+            } else {
+                item.preferredForwardBufferDuration = 5
+            }
             newPlayer.automaticallyWaitsToMinimizeStalling = false
         }
 

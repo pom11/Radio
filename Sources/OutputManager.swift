@@ -210,14 +210,17 @@ final class OutputManager: ObservableObject {
                     proxyReady()
                     return
                 }
+                guard let proxyURL else {
+                    Logger(subsystem: "ro.pom.radio", category: "OutputManager").error("Cast proxy failed to start for \(url)")
+                    proxyReady()
+                    return
+                }
                 let castDevice = self.makeCastDevice(from: device)
-                let castURL = proxyURL ?? url
-                let streamType = proxyURL != nil ? "LIVE" : nil
                 Task {
                     do {
-                        try await self.castController.cast(url: castURL, to: castDevice, streamType: streamType)
+                        try await self.castController.cast(url: proxyURL, to: castDevice, streamType: "LIVE")
                     } catch {
-                        Logger(subsystem: "ro.pom.radio", category: "OutputManager").error("Cast proxy failed: \(error)")
+                        Logger(subsystem: "ro.pom.radio", category: "OutputManager").error("Cast failed: \(error)")
                     }
                     await MainActor.run { proxyReady() }
                 }
