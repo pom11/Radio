@@ -3,6 +3,9 @@ import Combine
 import CoreSpotlight
 import ServiceManagement
 import UniformTypeIdentifiers
+import os.log
+
+private let log = Logger(subsystem: "ro.pom.radio", category: "app")
 
 @main
 struct RadioApp: App {
@@ -634,16 +637,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupHotKeys() {
         let manager = HotKeyManager.shared
 
+        var registered: [String] = []
         for slot in HotKeyManager.Slot.allCases {
             if let combo = manager.savedCombo(for: slot) {
                 manager.register(combo, for: slot)
+                registered.append("\(slot.label): \(combo.displayString)")
             }
+        }
+        if registered.isEmpty {
+            log.info("No hotkeys configured")
+        } else {
+            log.info("Registered \(registered.count) hotkeys: \(registered.joined(separator: ", "))")
         }
 
         manager.onToggleVideo = { [weak self] in
             guard let pm = self?.playerManager else { return }
             let player = pm.activePlayer ?? pm.players.first
-            guard let player, player.isPlaying else { return }
+            guard let player, player.currentStream != nil else { return }
             pm.toggleVideo(for: player)
         }
 
@@ -669,7 +679,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if player.isCasting, let device = player.outputDevice as OutputDevice? {
                 OutputManager.shared.castVolumeUp(device: device)
             } else {
-                guard player.separateControls else { return }
+                if !player.separateControls { player.setSeparateControls(true) }
                 player.adjustVolume(by: 0.05)
             }
         }
@@ -681,7 +691,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if player.isCasting, let device = player.outputDevice as OutputDevice? {
                 OutputManager.shared.castVolumeDown(device: device)
             } else {
-                guard player.separateControls else { return }
+                if !player.separateControls { player.setSeparateControls(true) }
                 player.adjustVolume(by: -0.05)
             }
         }

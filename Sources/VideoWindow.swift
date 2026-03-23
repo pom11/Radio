@@ -303,7 +303,7 @@ struct VideoWindowRoot: View {
                 if player.isCasting {
                     OutputManager.shared.castVolumeUp(device: player.outputDevice)
                 } else {
-                    guard player.separateControls else { return false }
+                    if !player.separateControls { player.setSeparateControls(true) }
                     player.adjustVolume(by: 0.05)
                 }
                 revealControls()
@@ -312,7 +312,7 @@ struct VideoWindowRoot: View {
                 if player.isCasting {
                     OutputManager.shared.castVolumeDown(device: player.outputDevice)
                 } else {
-                    guard player.separateControls else { return false }
+                    if !player.separateControls { player.setSeparateControls(true) }
                     player.adjustVolume(by: -0.05)
                 }
                 revealControls()
