@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
     private let playerManager = PlayerManager.shared
+    private var didFinishLaunching = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
@@ -63,6 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Check required CLI dependencies
         checkDependencies()
+
+        didFinishLaunching = true
     }
 
     func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
@@ -319,6 +322,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard didFinishLaunching else { return false }
         togglePopover()
         return true
     }
