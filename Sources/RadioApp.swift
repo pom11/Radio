@@ -12,9 +12,7 @@ struct RadioApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        // No visible scenes — everything is managed by AppDelegate
-        Window("_hidden", id: "hidden") { EmptyView().frame(width: 0, height: 0) }
-            .defaultSize(width: 0, height: 0)
+        Settings { EmptyView() }
     }
 }
 
@@ -27,12 +25,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private let playerManager = PlayerManager.shared
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Close any windows SwiftUI may have restored
-        DispatchQueue.main.async {
-            for window in NSApp.windows where window.title == "_hidden" || window.title.isEmpty {
-                window.close()
-            }
+        // Close any windows SwiftUI created before we take over
+        for window in NSApp.windows where window !== settingsWindow {
+            window.orderOut(nil)
         }
 
         // Set app icon from bundle
