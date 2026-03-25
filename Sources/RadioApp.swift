@@ -65,7 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Check required CLI dependencies
         checkDependencies()
 
-        didFinishLaunching = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { self.didFinishLaunching = true }
     }
 
     func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
