@@ -123,10 +123,13 @@ final class OutputManager: ObservableObject {
                 mScope: kAudioObjectPropertyScopeGlobal,
                 mElement: kAudioObjectPropertyElementMain
             )
-            var uid: CFString = "" as CFString
-            var uidSize = UInt32(MemoryLayout<CFString>.size)
+            // CFString is a (pointer-sized) typealias for CFStringRef; declaring it as a value
+            // storage and passing `&uid` can write through the wrong storage. Use Unmanaged<CFString>
+            // (an explicit optional pointer) and read it back with proper CFString semantics.
+            var uid: Unmanaged<CFString>? = nil
+            var uidSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
             AudioObjectGetPropertyData(deviceID, &uidAddr, 0, nil, &uidSize, &uid)
-            let uidStr = uid as String
+            let uidStr = uid?.takeUnretainedValue() as String? ?? ""
 
             if uidStr.contains("BuiltInSpeaker") || uidStr.contains("BuiltInMicrophone") { continue }
 
@@ -135,10 +138,11 @@ final class OutputManager: ObservableObject {
                 mScope: kAudioObjectPropertyScopeGlobal,
                 mElement: kAudioObjectPropertyElementMain
             )
-            var name: CFString = "" as CFString
-            var nameSize = UInt32(MemoryLayout<CFString>.size)
+            // Same CFString-vs-Unmanaged fix as the UID above.
+            var name: Unmanaged<CFString>? = nil
+            var nameSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
             AudioObjectGetPropertyData(deviceID, &nameAddr, 0, nil, &nameSize, &name)
-            let nameStr = name as String
+            let nameStr = name?.takeUnretainedValue() as String? ?? ""
 
             var transportAddr = AudioObjectPropertyAddress(
                 mSelector: kAudioDevicePropertyTransportType,
