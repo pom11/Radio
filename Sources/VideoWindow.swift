@@ -76,6 +76,32 @@ final class FloatingPanel: NSPanel {
 
 }
 
+/// Hosting view used for the floating panel's content.
+///
+/// The app is an LSUIElement (accessory) menu-bar app and `FloatingPanel` is a
+/// `.nonactivatingPanel`, so on its own the panel can NEVER become the key
+/// window — `FloatingPanel.keyDown`/`becomeKey` are never delivered, which is
+/// what made the floating window's in-window hotkeys dead and its controls
+/// unrevealable on click. This view makes the panel interactive when the user
+/// clicks it: it delivers the first click directly (no two-click focus dance)
+/// and activates the app + makes the panel key so keyboard input works. The
+/// panel stays floating and doesn't steal focus until the user actually clicks
+/// it.
+final class FloatingPanelHostingView: NSHostingView<VideoWindowRoot> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if let panel = window as? FloatingPanel, !panel.isKeyWindow {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        window?.makeKeyAndOrderFront(nil)
+        window?.makeFirstResponder(self)
+        super.mouseDown(with: event)
+    }
+}
+
 // MARK: - AVPlayerLayer wrapper
 
 final class PlayerLayerNSView: NSView {
@@ -360,7 +386,7 @@ final class VideoWindow: NSObject, NSWindowDelegate {
 
         if let panel, panel.isVisible {
             let root = VideoWindowRoot(player: player, manager: PlayerManager.shared, streamIsVideo: streamIsVideo, panel: panel)
-            panel.contentView = NSHostingView(rootView: root)
+            panel.contentView = FloatingPanelHostingView(rootView: root)
             if let hosting = panel.contentView {
                 hosting.wantsLayer = true
                 hosting.layer?.cornerRadius = 10
@@ -391,7 +417,7 @@ final class VideoWindow: NSObject, NSWindowDelegate {
         panel.hideStandardButtons()
 
         let root = VideoWindowRoot(player: player, manager: PlayerManager.shared, streamIsVideo: streamIsVideo, panel: panel)
-        let hostingView = NSHostingView(rootView: root)
+        let hostingView = FloatingPanelHostingView(rootView: root)
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 10
         hostingView.layer?.masksToBounds = true
