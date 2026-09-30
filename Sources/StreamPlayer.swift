@@ -59,7 +59,8 @@ final class StreamPlayer: NSObject, ObservableObject {
         isPlaying = true
         statusText = "Connecting..."
 
-        playTask = Task { @MainActor in
+        playTask = Task { @MainActor [weak self] in
+            guard let self else { return }
             let result = await URLResolver.resolve(stream.url, type: stream.type, pageUrl: stream.pageUrl)
             guard !Task.isCancelled else { return }
 

@@ -119,24 +119,21 @@ final class CastProxy: @unchecked Sendable {
 
             // Wait for the listener to actually be ready before returning the URL
             let ready: Bool = await withCheckedContinuation { cont in
-                var resumed = false
+                let resumed = OnceFlag()
                 newListener.stateUpdateHandler = { [weak self] state in
                     switch state {
                     case .ready:
                         self?.logger.debug("Proxy listening on port \(port)")
-                        if !resumed {
-                            resumed = true
+                        if resumed.testAndSet() {
                             cont.resume(returning: true)
                         }
                     case .failed(let error):
                         self?.logger.error("Listener failed: \(error)")
-                        if !resumed {
-                            resumed = true
+                        if resumed.testAndSet() {
                             cont.resume(returning: false)
                         }
                     case .cancelled:
-                        if !resumed {
-                            resumed = true
+                        if resumed.testAndSet() {
                             cont.resume(returning: false)
                         }
                     default:
@@ -152,8 +149,7 @@ final class CastProxy: @unchecked Sendable {
 
                 // Timeout after 5 seconds
                 self.listenerQueue.asyncAfter(deadline: .now() + 5) {
-                    if !resumed {
-                        resumed = true
+                    if resumed.testAndSet() {
                         cont.resume(returning: false)
                     }
                 }

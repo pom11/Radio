@@ -2,6 +2,30 @@ import Foundation
 import Network
 import os
 
+// MARK: - Helpers
+
+/// Thread-safe exactly-once flag for resuming a continuation exactly once from
+/// concurrently-executing (`@Sendable`) callbacks such as NWConnection /
+/// NWListener state update handlers and queue timeouts. The compiler cannot
+/// prove those callbacks run on a single thread, so a plain captured `var`
+/// would be a Swift 6 error; the lock serializes access so this is safe to
+/// share across them.
+final class OnceFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+
+    /// Atomically test-and-set. Returns `true` the first time it is called and
+    /// `false` on every subsequent call — the caller resumes its continuation
+    /// only on the first `true`.
+    func testAndSet() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if done { return false }
+        done = true
+        return true
+    }
+}
+
 // MARK: - Models
 
 struct CastDevice: Identifiable, Hashable {
@@ -182,31 +206,27 @@ private final class CastConnection: @unchecked Sendable {
 
     func connect() async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            var resumed = false
+            let resumed = OnceFlag()
             connection.stateUpdateHandler = { [weak self] state in
                 guard let self else { return }
                 switch state {
                 case .ready:
-                    if !resumed {
-                        resumed = true
+                    if resumed.testAndSet() {
                         self.lock.lock()
                         self.isConnected = true
                         self.lock.unlock()
                         cont.resume()
                     }
                 case .failed(let error):
-                    if !resumed {
-                        resumed = true
+                    if resumed.testAndSet() {
                         cont.resume(throwing: error)
                     }
                 case .cancelled:
-                    if !resumed {
-                        resumed = true
+                    if resumed.testAndSet() {
                         cont.resume(throwing: CastError.connectionFailed)
                     }
                 case .waiting(let error):
-                    if !resumed {
-                        resumed = true
+                    if resumed.testAndSet() {
                         self.connection.cancel()
                         cont.resume(throwing: error)
                     }
@@ -218,8 +238,7 @@ private final class CastConnection: @unchecked Sendable {
 
             // Timeout: if connection doesn't resolve in 10 seconds, fail
             readQueue.asyncAfter(deadline: .now() + 10) {
-                if !resumed {
-                    resumed = true
+                if resumed.testAndSet() {
                     self.connection.cancel()
                     cont.resume(throwing: CastError.connectionFailed)
                 }
@@ -350,6 +369,25 @@ private final class CastConnection: @unchecked Sendable {
 
     // MARK: Wait for message
 
+    /// Synchronous, lock-guarded search-and-remove of a matching received
+    /// message. Kept separate from `waitForMessage` so the `NSLock` is never
+    /// touched from an async context (which errors in Swift 6).
+    private func takeReceivedMessage(
+        namespace: String?,
+        type: String?,
+        substring: String?
+    ) -> CastProtobuf.DecodedCastMessage? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let idx = receivedMessages.firstIndex(where: { msg in
+            if let ns = namespace, msg.namespace != ns { return false }
+            if let t = type, !msg.payloadUTF8.contains("\"\(t)\"") { return false }
+            if let s = substring, !msg.payloadUTF8.contains(s) { return false }
+            return true
+        }) else { return nil }
+        return receivedMessages.remove(at: idx)
+    }
+
     private func waitForMessage(
         namespace: String? = nil,
         containingType type: String? = nil,
@@ -358,18 +396,9 @@ private final class CastConnection: @unchecked Sendable {
     ) async -> CastProtobuf.DecodedCastMessage? {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            lock.lock()
-            if let idx = receivedMessages.firstIndex(where: { msg in
-                if let ns = namespace, msg.namespace != ns { return false }
-                if let t = type, !msg.payloadUTF8.contains("\"\(t)\"") { return false }
-                if let s = substring, !msg.payloadUTF8.contains(s) { return false }
-                return true
-            }) {
-                let msg = receivedMessages.remove(at: idx)
-                lock.unlock()
+            if let msg = takeReceivedMessage(namespace: namespace, type: type, substring: substring) {
                 return msg
             }
-            lock.unlock()
             try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
         }
         return nil
@@ -656,9 +685,18 @@ final class CastController: @unchecked Sendable {
 
     func discoverDevices(timeout: TimeInterval = 5) async -> [CastDevice] {
         await withCheckedContinuation { continuation in
-            var discovered: [CastDevice] = []
-            var resolveConns: [NWConnection] = []
-            let lock = NSLock()
+            // `browseResultsChangedHandler`, the per-connection
+            // `stateUpdateHandler`, and the asyncAfter timeout closure all run
+            // concurrently (on the discovery queue), so the accumulator state
+            // must live in a single lock-guarded reference type that the
+            // `@Sendable` closures can capture safely (a captured `var` would
+            // error in Swift 6).
+            final class DiscoveryBox: @unchecked Sendable {
+                let lock = NSLock()
+                var discovered: [CastDevice] = []
+                var resolveConns: [NWConnection] = []
+            }
+            let box = DiscoveryBox()
             let browser = NWBrowser(for: .bonjour(type: "_googlecast._tcp.", domain: nil), using: .tcp)
             let queue = DispatchQueue(label: "ro.pom.radio.cast.discovery")
 
@@ -667,9 +705,9 @@ final class CastController: @unchecked Sendable {
                     if case .service(let name, _, _, _) = result.endpoint {
                         let params = NWParameters.tcp
                         let resolveConn = NWConnection(to: result.endpoint, using: params)
-                        lock.lock()
-                        resolveConns.append(resolveConn)
-                        lock.unlock()
+                        box.lock.lock()
+                        box.resolveConns.append(resolveConn)
+                        box.lock.unlock()
                         resolveConn.stateUpdateHandler = { state in
                             if case .ready = state {
                                 if let path = resolveConn.currentPath,
@@ -702,11 +740,11 @@ final class CastController: @unchecked Sendable {
                                         port: port.rawValue,
                                         model: model
                                     )
-                                    lock.lock()
-                                    if !discovered.contains(where: { $0.ip == device.ip }) {
-                                        discovered.append(device)
+                                    box.lock.lock()
+                                    if !box.discovered.contains(where: { $0.ip == device.ip }) {
+                                        box.discovered.append(device)
                                     }
-                                    lock.unlock()
+                                    box.lock.unlock()
                                 }
                                 resolveConn.cancel()
                             } else if case .failed = state {
@@ -723,10 +761,10 @@ final class CastController: @unchecked Sendable {
             queue.asyncAfter(deadline: .now() + timeout) {
                 browser.cancel()
                 // Cancel any resolve connections still in progress
-                lock.lock()
-                let pending = resolveConns
-                let result = discovered
-                lock.unlock()
+                box.lock.lock()
+                let pending = box.resolveConns
+                let result = box.discovered
+                box.lock.unlock()
                 for conn in pending { conn.cancel() }
                 continuation.resume(returning: result)
             }
@@ -735,38 +773,64 @@ final class CastController: @unchecked Sendable {
 
     // MARK: - Connection Management
 
-    private func getConnection(for device: CastDevice) async throws -> CastConnection {
+    // MARK: - Lock-guarded connection-dictionary accessors
+    // These synchronous helpers keep NSLock usage out of async contexts
+    // (which errors in Swift 6). All are called with no lock already held.
+
+    private func storedConnection(for ip: String) -> CastConnection? {
         lock.lock()
+        defer { lock.unlock() }
+        return connections[ip]
+    }
+
+    private func pendingConnectionTask(for ip: String) -> Task<CastConnection, Error>? {
+        lock.lock()
+        defer { lock.unlock() }
+        return pendingConnections[ip]
+    }
+
+    private func recordPendingConnection(_ task: Task<CastConnection, Error>, for ip: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        pendingConnections[ip] = task
+    }
+
+    private func storeConnection(_ conn: CastConnection, for ip: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        connections[ip] = conn
+        pendingConnections.removeValue(forKey: ip)
+    }
+
+    private func clearPendingConnection(for ip: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        pendingConnections.removeValue(forKey: ip)
+    }
+
+    private func getConnection(for device: CastDevice) async throws -> CastConnection {
         // Return existing live connection
-        if let existing = connections[device.ip] {
-            lock.unlock()
+        if let existing = storedConnection(for: device.ip) {
             return existing
         }
         // If another caller is already connecting, await that same task
-        if let pending = pendingConnections[device.ip] {
-            lock.unlock()
+        if let pending = pendingConnectionTask(for: device.ip) {
             return try await pending.value
         }
         // Create a single connection task that all concurrent callers will share
         let task = Task<CastConnection, Error> {
             let conn = CastConnection(host: device.ip, port: device.port)
             try await conn.connect()
-            self.lock.lock()
-            self.connections[device.ip] = conn
-            self.pendingConnections.removeValue(forKey: device.ip)
-            self.lock.unlock()
+            self.storeConnection(conn, for: device.ip)
             self.logger.debug("Connected to \(device.name) at \(device.ip):\(device.port)")
             return conn
         }
-        pendingConnections[device.ip] = task
-        lock.unlock()
+        recordPendingConnection(task, for: device.ip)
 
         do {
             return try await task.value
         } catch {
-            lock.lock()
-            pendingConnections.removeValue(forKey: device.ip)
-            lock.unlock()
+            clearPendingConnection(for: device.ip)
             throw error
         }
     }
