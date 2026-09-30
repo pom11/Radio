@@ -85,6 +85,19 @@ struct PlayerControlCard: View {
                 .help("Show or hide stream window")
             }
 
+            if let stream = player.currentStream, stream.pageUrl != nil {
+                Button { player.refreshFromSource(stream, manual: true) } label: {
+                    if player.isRefreshing {
+                        ProgressView()
+                            .controlSize(.mini)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+                .help("Re-fetch stream URL from its source page")
+                .disabled(player.isRefreshing)
+            }
+
             Button { playPauseTapped() } label: {
                 Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
             }

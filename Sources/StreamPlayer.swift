@@ -11,6 +11,7 @@ final class StreamPlayer: NSObject, ObservableObject {
     @Published var volume: Float = 0.5
     @Published var separateControls: Bool = true
     @Published var statusText: String = ""
+    @Published private(set) var isRefreshing = false
     var avPlayer: AVPlayer?
 
     let id = UUID()
@@ -21,6 +22,20 @@ final class StreamPlayer: NSObject, ObservableObject {
 
     var isCasting: Bool { outputDevice.proto == .chromecast }
     var isLocal: Bool { outputDevice.proto == .local }
+
+    /// Called when a refreshed stream URL is available, so the owner can persist it
+    /// (see StreamStore.applyRefreshedURL). Receives a Stream preserving id/name/type/pageUrl
+    /// with the freshly resolved url/referer/headers.
+    var onRefreshStream: ((Stream) -> Void)?
+
+    // MARK: - Refresh-from-source state
+
+    private static let maxAutoRefreshAttempts = 3
+    private static let refreshBackoffBase: TimeInterval = 10
+
+    private var refreshTask: Task<Void, Never>?
+    private var refreshRetryTask: DispatchWorkItem?
+    private var autoRefreshAttempts = 0
 
     private var previousVolume: Float = 0.5
     private var cancellables = Set<AnyCancellable>()
@@ -42,6 +57,8 @@ final class StreamPlayer: NSObject, ObservableObject {
 
     deinit {
         playTask?.cancel()
+        refreshTask?.cancel()
+        refreshRetryTask?.cancel()
         reconnectTask?.cancel()
         cancellables.removeAll()
         avPlayer?.pause()
@@ -65,8 +82,13 @@ final class StreamPlayer: NSObject, ObservableObject {
             guard !Task.isCancelled else { return }
 
             guard let result else {
-                statusText = stream.type == .channel ? "Offline" : "Failed"
-                isPlaying = false
+                self.statusText = stream.type == .channel ? "Offline" : "Failed"
+                self.isPlaying = false
+                // The stream URL could not be resolved — if it has a source page, try
+                // to refetch a fresh URL from it.
+                if stream.pageUrl != nil {
+                    _ = self.refreshFromSource(stream, manual: false)
+                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
                     if self?.statusText == "Offline" || self?.statusText == "Failed" {
                         self?.stop()
@@ -75,8 +97,8 @@ final class StreamPlayer: NSObject, ObservableObject {
                 return
             }
 
-            lastResolveResult = result
-            startPlayback(result: result)
+            self.lastResolveResult = result
+            self.startPlayback(result: result)
         }
     }
 
@@ -178,6 +200,12 @@ final class StreamPlayer: NSObject, ObservableObject {
     func stop() {
         playTask?.cancel()
         playTask = nil
+        refreshTask?.cancel()
+        refreshTask = nil
+        refreshRetryTask?.cancel()
+        refreshRetryTask = nil
+        autoRefreshAttempts = 0
+        isRefreshing = false
         reconnectTask?.cancel()
         reconnectTask = nil
         nudgeTask?.cancel()
@@ -277,6 +305,103 @@ final class StreamPlayer: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Refresh from source
+
+    /// Re-fetch a fresh playable URL from the stream's source page (pageUrl).
+    /// - `manual`: true for the user-triggered "Refresh" control (unbounded budget);
+    ///   false for automatic refetch on playback failure (bounded by `autoRefreshAttempts`).
+    /// - Returns true if a refresh was kicked off, false if it cannot run (no pageUrl,
+    ///   already refreshing, or auto budget exhausted).
+    @discardableResult
+    func refreshFromSource(_ stream: Stream, manual: Bool) -> Bool {
+        guard stream.pageUrl != nil else {
+            if manual {
+                statusText = "No source page to refetch from"
+                log.info("refreshFromSource: \(stream.name) has no pageUrl; cannot refresh")
+            }
+            return false
+        }
+        guard refreshTask == nil && !isRefreshing else {
+            log.debug("refreshFromSource: already refreshing \(stream.name)")
+            return false
+        }
+
+        if !manual {
+            guard autoRefreshAttempts < Self.maxAutoRefreshAttempts else {
+                statusText = "Auto-refresh exhausted"
+                log.info("refreshFromSource: auto budget exhausted for \(stream.name)")
+                return false
+            }
+            autoRefreshAttempts += 1
+        }
+
+        let pageUrl = stream.pageUrl!
+        let streamType = stream.type
+
+        isRefreshing = true
+        statusText = "Re-fetching from source..."
+
+        refreshTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let result = await URLResolver.resolve(pageUrl, type: streamType)
+            self.refreshTask = nil
+            self.isRefreshing = false
+            guard !Task.isCancelled else { return }
+
+            guard let result else {
+                self.statusText = "Refresh failed"
+                log.error("refreshFromSource: resolve failed for \(stream.name) from \(pageUrl)")
+                if !manual {
+                    self.scheduleRefreshRetry(stream)
+                }
+                return
+            }
+
+            // Success: persist the fresh URL (keep referer/headers semantics — the
+            // source page is still valid, so its referer is preserved). Restart playback
+            // so the refreshed URL actually drives the player.
+            var refreshed = stream
+            refreshed.url = result.url
+            log.info("refreshFromSource: \(stream.name) refreshed → \(result.url)")
+            self.onRefreshStream?(refreshed)
+
+            if let current = self.currentStream, current.id == stream.id {
+                self.play(refreshed)
+            }
+        }
+        return true
+    }
+
+    /// Schedule a retry of an automatic (failed) refresh with exponential-ish backoff.
+    private func scheduleRefreshRetry(_ stream: Stream) {
+        refreshRetryTask?.cancel()
+        let backoff = autoRefreshAttempts > 1
+            ? Self.refreshBackoffBase * Double(autoRefreshAttempts)
+            : Self.refreshBackoffBase
+        let task = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.refreshRetryTask = nil
+            // Only retry if this stream is still what we're playing.
+            guard self.currentStream?.id == stream.id else { return }
+            _ = self.refreshFromSource(stream, manual: false)
+        }
+        refreshRetryTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + backoff, execute: task)
+    }
+
+    /// Route a playback failure: if the stream has a source page, auto-refresh from it;
+    /// otherwise fall back to the plain reconnect path.
+    private func handlePlaybackFailure() {
+        guard let stream = currentStream, stream.pageUrl != nil else {
+            reconnect()
+            return
+        }
+        let started = refreshFromSource(stream, manual: false)
+        if !started {
+            reconnect()
+        }
+    }
+
     // MARK: - Status Text
 
     private func updateStatusText() {
@@ -311,7 +436,9 @@ final class StreamPlayer: NSObject, ObservableObject {
                         self.startPlayback(result: result)
                         return
                     }
-                    self.reconnect()
+                    // Hard failure: if the stream has a source page, auto-refresh it;
+                    // otherwise just reconnect.
+                    self.handlePlaybackFailure()
                 default:
                     break
                 }
@@ -391,12 +518,16 @@ final class StreamPlayer: NSObject, ObservableObject {
             let result = await URLResolver.resolve(stream.url, type: stream.type, pageUrl: stream.pageUrl)
             guard !Task.isCancelled else { return }
             guard let result else {
-                statusText = "Stream offline"
-                isPlaying = false
+                self.statusText = "Stream offline"
+                self.isPlaying = false
+                // Source page still up? Refetch a fresh URL from it.
+                if stream.pageUrl != nil {
+                    _ = self.refreshFromSource(stream, manual: false)
+                }
                 return
             }
-            lastResolveResult = result
-            startPlayback(result: result)
+            self.lastResolveResult = result
+            self.startPlayback(result: result)
         }
     }
 

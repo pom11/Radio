@@ -61,6 +61,17 @@ final class PlayerManager: ObservableObject {
         let player = StreamPlayer()
         player.outputDevice = device
 
+        // Persist a source-page-refreshed URL back into the stream store so the
+        // refreshed URL survives and drives future playback.
+        player.onRefreshStream = { refreshed in
+            _ = sharedStore.applyRefreshedURL(
+                id: refreshed.id,
+                url: refreshed.url,
+                referer: refreshed.referer,
+                headers: refreshed.headers
+            )
+        }
+
         // Chromecast takeover: if another player uses the same cast device, take it over
         if device.proto == .chromecast {
             handleChromecastTakeover(for: device, excludingPlayer: player)

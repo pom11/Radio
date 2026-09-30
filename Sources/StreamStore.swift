@@ -162,6 +162,18 @@ final class StreamStore: ObservableObject {
         save()
     }
 
+    /// Update a stream's playable URL/referer/headers after a successful source-page refetch.
+    /// Preserves id/name/type/pageUrl. Returns the updated stream, or nil if not found.
+    @discardableResult
+    func applyRefreshedURL(id: UUID, url: String, referer: String?, headers: [String: String]?) -> Stream? {
+        guard let idx = streams.firstIndex(where: { $0.id == id }) else { return nil }
+        streams[idx].url = url
+        streams[idx].referer = referer
+        streams[idx].headers = headers
+        save()
+        return streams[idx]
+    }
+
     func indexByPageUrl(_ pageUrl: String) -> Int? {
         streams.firstIndex(where: { $0.pageUrl == pageUrl })
     }
