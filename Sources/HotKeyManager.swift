@@ -142,7 +142,7 @@ extension HotKeyManager {
 // MARK: - Global Hot Key Manager (Carbon API)
 
 final class HotKeyManager {
-    static let shared = HotKeyManager()
+    nonisolated(unsafe) static let shared = HotKeyManager()
 
     private var hotKeyRefs: [Slot: EventHotKeyRef] = [:]
     private var eventHandlerRef: EventHandlerRef?

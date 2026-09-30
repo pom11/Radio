@@ -291,7 +291,7 @@ enum StreamProbe {
 
     // MARK: - CLI Tool Locator
 
-    private static var toolCache: [String: String] = [:]
+    nonisolated(unsafe) private static var toolCache: [String: String] = [:]
 
     private static func findTool(_ name: String) -> String? {
         if let cached = toolCache[name] { return cached }

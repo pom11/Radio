@@ -34,7 +34,7 @@ struct OutputDevice: Identifiable, Hashable {
 // MARK: - Output Manager
 
 final class OutputManager: ObservableObject {
-    static let shared = OutputManager()
+    nonisolated(unsafe) static let shared = OutputManager()
 
     @Published var devices: [OutputDevice] = [.macbook]
     @Published var defaultDevice: OutputDevice = .macbook

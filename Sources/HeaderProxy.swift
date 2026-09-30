@@ -219,9 +219,9 @@ final class HeaderProxy: @unchecked Sendable {
 
 /// Forwards URLSession response chunks directly to an NWConnection as they arrive.
 private final class StreamingDelegate: NSObject, URLSessionDataDelegate {
-    static var key = 0
+    nonisolated(unsafe) static var key = 0
     let connection: NWConnection
-    var headerSent = false
+    nonisolated(unsafe) var headerSent = false
     weak var task: URLSessionDataTask?
     private let log = Logger(subsystem: "ro.pom.radio", category: "HeaderProxy")
     private var startTime: CFAbsoluteTime = 0

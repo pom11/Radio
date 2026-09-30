@@ -11,8 +11,8 @@ final class CastProxy: @unchecked Sendable {
     // MARK: - Shared Port Allocator
 
     private static let portLock = NSLock()
-    private static var usedPorts: Set<Int> = []
-    private static var nextPort: Int = 9723
+    nonisolated(unsafe) private static var usedPorts: Set<Int> = []
+    nonisolated(unsafe) private static var nextPort: Int = 9723
 
     static func allocatePort() -> Int {
         portLock.lock()

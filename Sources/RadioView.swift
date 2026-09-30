@@ -832,7 +832,7 @@ struct AboutDetail: View {
 // MARK: - Update Checker
 
 enum UpdateChecker {
-    static var lastStatus: String?
+    nonisolated(unsafe) static var lastStatus: String?
 
     static func check(completion: ((String) -> Void)? = nil) {
         completion?("Checking...")

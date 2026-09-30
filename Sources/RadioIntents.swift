@@ -1,7 +1,7 @@
 import AppIntents
 
 // Shared store used by both the app UI and intents
-let sharedStore = StreamStore()
+nonisolated(unsafe) let sharedStore = StreamStore()
 
 // MARK: - Stream Entity (makes streams selectable in Spotlight)
 

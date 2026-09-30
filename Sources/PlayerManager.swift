@@ -6,7 +6,7 @@ import os.log
 private let log = Logger(subsystem: "ro.pom.radio", category: "manager")
 
 final class PlayerManager: ObservableObject {
-    static let shared = PlayerManager()
+    nonisolated(unsafe) static let shared = PlayerManager()
 
     @Published var players: [StreamPlayer] = []
     @Published var activePlayer: StreamPlayer?
