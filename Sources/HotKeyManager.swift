@@ -221,9 +221,10 @@ final class HotKeyManager {
                     &hotKeyID
                 )
 
+                let capturedHotKeyID = hotKeyID
                 DispatchQueue.main.async {
                     let mgr = HotKeyManager.shared
-                    switch hotKeyID.id {
+                    switch capturedHotKeyID.id {
                     case Slot.video.rawValue:
                         mgr.onToggleVideo?()
                     case Slot.popover.rawValue:

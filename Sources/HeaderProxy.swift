@@ -2,6 +2,12 @@ import Foundation
 import Network
 import os
 
+/// Thread-safe container for a single optional URL, used to hand a listener
+/// start result out of a semaphore-guarded start() (see HeaderProxy.start).
+private final class ResultBox: @unchecked Sendable {
+    var value: URL?
+}
+
 /// Lightweight local HTTP proxy that injects custom headers into all requests.
 /// Uses NWListener (event-driven, no blocking threads) instead of raw sockets.
 /// AVPlayer connects to http://127.0.0.1:<port>/path and the proxy forwards
@@ -44,7 +50,10 @@ final class HeaderProxy: @unchecked Sendable {
         }
 
         let semaphore = DispatchSemaphore(value: 0)
-        var result: URL?
+        // Box lets the listener queue write the ready URL safely; read after
+        // the semaphore signals (happens-before). `@unchecked Sendable` box
+        // avoids #SendableClosureCaptures on the captured `var` (Swift 6).
+        let resultBox = ResultBox()
 
         listener?.stateUpdateHandler = { [weak self] state in
             guard let self else { return }
@@ -52,7 +61,7 @@ final class HeaderProxy: @unchecked Sendable {
             case .ready:
                 if let p = self.listener?.port?.rawValue {
                     self.port = Int(p)
-                    result = URL(string: "http://127.0.0.1:\(p)")
+                    resultBox.value = URL(string: "http://127.0.0.1:\(p)")
                     self.log.debug("HeaderProxy listening on port \(p)")
                 }
                 semaphore.signal()
@@ -70,7 +79,7 @@ final class HeaderProxy: @unchecked Sendable {
 
         listener?.start(queue: queue)
         semaphore.wait()
-        return result
+        return resultBox.value
     }
 
     func stop() {
