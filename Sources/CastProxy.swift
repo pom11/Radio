@@ -2,6 +2,15 @@ import Foundation
 import Network
 import os
 
+/// Thread-safe container for a value handed across a semaphore guard. Lets a
+/// connection-send completion (fired on the connection's queue) write a result
+/// that the calling thread reads after waiting — avoids #SendableClosureCaptures
+/// on captured `var`s (Swift 6).
+private final class LockBox<T>: @unchecked Sendable {
+    var value: T
+    init(_ value: T) { self.value = value }
+}
+
 /// Native Swift replacement for `cast_proxy.py`.
 ///
 /// Runs an in-process HTTP server (via Network.framework) that remuxes HLS
@@ -329,13 +338,13 @@ final class CastProxy: @unchecked Sendable {
         let headerData = Data(header.utf8)
 
         let sem = DispatchSemaphore(value: 0)
-        var failed = false
+        let failed = LockBox(false)
         connection.send(content: headerData + initData, completion: .contentProcessed { error in
-            if error != nil { failed = true }
+            if error != nil { failed.value = true }
             sem.signal()
         })
         sem.wait()
-        if failed {
+        if failed.value {
             process.terminate()
             untrackProcess(process)
             connection.cancel()
@@ -348,16 +357,16 @@ final class CastProxy: @unchecked Sendable {
             if chunk.isEmpty { break }
 
             let sendSem = DispatchSemaphore(value: 0)
-            var sendError: NWError?
+            let sendError = LockBox<NWError?>(nil)
 
             connection.send(content: chunk, completion: .contentProcessed { error in
-                sendError = error
+                sendError.value = error
                 sendSem.signal()
             })
 
             sendSem.wait()
 
-            if sendError != nil {
+            if sendError.value != nil {
                 logger.debug("Client disconnected, terminating ffmpeg")
                 break
             }

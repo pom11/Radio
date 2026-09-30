@@ -231,11 +231,11 @@ private final class StreamingDelegate: NSObject, URLSessionDataDelegate {
     nonisolated(unsafe) static var key = 0
     let connection: NWConnection
     nonisolated(unsafe) var headerSent = false
-    weak var task: URLSessionDataTask?
+    nonisolated(unsafe) weak var task: URLSessionDataTask?
     private let log = Logger(subsystem: "ro.pom.radio", category: "HeaderProxy")
-    private var startTime: CFAbsoluteTime = 0
-    private var totalBytes = 0
-    private var chunkCount = 0
+    nonisolated(unsafe) private var startTime: CFAbsoluteTime = 0
+    nonisolated(unsafe) private var totalBytes = 0
+    nonisolated(unsafe) private var chunkCount = 0
 
     init(connection: NWConnection) {
         self.connection = connection
