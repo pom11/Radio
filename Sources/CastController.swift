@@ -923,13 +923,21 @@ final class CastController: @unchecked Sendable {
         return await conn.getStatus()
     }
 
-    /// Stop all active connections. Used during app shutdown.
-    func disconnectAll() async {
+    /// Clear all connection maps under lock and return the snapshot so the
+    /// async caller can tear the connections down outside the lock. Sync
+    /// helper so no NSLock is touched from async contexts (Swift 6 check).
+    private func clearAllConnections() -> [String: CastConnection] {
         lock.lock()
+        defer { lock.unlock() }
         let allConnections = connections
         connections.removeAll()
         pendingConnections.removeAll()
-        lock.unlock()
+        return allConnections
+    }
+
+    /// Stop all active connections. Used during app shutdown.
+    func disconnectAll() async {
+        let allConnections = clearAllConnections()
 
         for (_, conn) in allConnections {
             try? await conn.stop()

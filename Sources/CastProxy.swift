@@ -160,9 +160,7 @@ final class CastProxy: @unchecked Sendable {
                 return nil
             }
 
-            lock.lock()
-            self.listener = newListener
-            lock.unlock()
+            installListener(newListener)
 
             logger.debug("Proxy started: \(proxyURL, privacy: .public)")
             return proxyURL
@@ -170,6 +168,14 @@ final class CastProxy: @unchecked Sendable {
             logger.error("Failed to create listener: \(error)")
             return nil
         }
+    }
+
+    /// Install the active listener under lock. Sync helper so no NSLock is
+    /// touched from async contexts (Swift 6 concurrency check).
+    private func installListener(_ newListener: NWListener) {
+        lock.lock()
+        self.listener = newListener
+        lock.unlock()
     }
 
     func stop() {
