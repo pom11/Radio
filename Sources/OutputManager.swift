@@ -62,18 +62,22 @@ final class OutputManager: ObservableObject {
             let audio = await audioDevices
             let chromecasts = await chromecastDevices
 
-            var all: [OutputDevice] = [.macbook]
-            all.append(contentsOf: audio)
+            var collected: [OutputDevice] = [.macbook]
+            collected.append(contentsOf: audio)
 
             // Convert CastDevice to OutputDevice
             for cc in chromecasts {
-                all.append(OutputDevice(
+                collected.append(OutputDevice(
                     id: cc.ip,
                     name: cc.name,
                     model: cc.model,
                     proto: .chromecast
                 ))
             }
+
+            // Capture an immutable `let` — capturing a `var` inside the concurrently
+            // running MainActor closure is an error in Swift 6 language mode.
+            let all = collected
 
             await MainActor.run {
                 self.devices = all
