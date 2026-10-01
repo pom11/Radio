@@ -11,5 +11,7 @@ docs/superpowers/
 config/
 /streams.json
 radio.pem
+*.p12
+*.p8
 .DS_Store
 release.sh
