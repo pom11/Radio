@@ -521,8 +521,9 @@ enum StreamProbe {
     // MARK: - Web Scraping
 
     static func scrapeStreamURL(_ url: String) async -> ResolveResult? {
-        // tvron.me pages have no literal stream — use the dedicated chain resolver.
-        if url.contains("tvron.me") {
+        // tvron.me / tvron.ro pages have no literal stream — use the dedicated chain resolver.
+        // (tvron.ro is the same site family; tvronResolve routes it through tvron.me.)
+        if url.contains("tvron.me") || url.contains("tvron.ro") {
             if let tvron = await tvronResolve(url) {
                 return tvron
             }
@@ -795,9 +796,10 @@ enum StreamProbe {
     static func resolve(url: String, type: String = "audio", pageUrl: String? = nil) async -> ResolveResult? {
         let lower = url.lowercased()
 
-        // tvron.me channel pages have no m3u8 literal — follow the iframe chain
-        // via the dedicated tvron resolver before generic scrape/yt-dlp paths.
-        if url.contains("tvron.me") {
+        // tvron.me / tvron.ro channel pages have no m3u8 literal — follow the iframe
+        // chain via the dedicated tvron resolver before generic scrape/yt-dlp paths.
+        // (tvron.ro is the same site family; tvronResolve routes it through tvron.me.)
+        if url.contains("tvron.me") || url.contains("tvron.ro") {
             if let tvron = await tvronResolve(url) {
                 return tvron
             }

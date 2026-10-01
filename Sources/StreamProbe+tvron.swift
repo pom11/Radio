@@ -80,9 +80,32 @@ extension StreamProbe {
     static func tvronResolve(_ pageURL: String) async -> ResolveResult? {
         log.info("tvron: resolving \(pageURL)")
 
+        // tvron.ro and tvron.me are the same site family serving the same
+        // channels (verified: https://tvron.ro/ch-hbo 301-redirects to
+        // https://tvron.me/ch-hbo). tvron.ro sits behind a Cloudflare bot
+        // wall — its embed endpoint returns "Acces Interzis" to plain HTTP
+        // ("Nu aveți permisiunea să vizualizați acest conținut direct.") —
+        // so we never touch it directly. Instead, rewrite a tvron.ro source
+        // page onto tvron.me keeping the same channel slug (ch-hbo -> /ch-hbo,
+        // which carries the same embed id) and run the whole chain on .me.
+        let effectivePage: String
+        if pageURL.contains("tvron.ro") {
+            if let u = URL(string: pageURL),
+               var comps = URLComponents(url: u, resolvingAgainstBaseURL: false) {
+                comps.host = "tvron.me"
+                effectivePage = comps.url?.absoluteString ?? pageURL
+            } else {
+                effectivePage = pageURL
+            }
+            log.info("tvron: routed \(pageURL) -> \(effectivePage)")
+        } else {
+            effectivePage = pageURL
+        }
+        // The .me channel page carries the same embed id as its .ro twin.
+
         // 1. Channel page -> embed id.
-        guard let pageHTML = await tvronFetchHTML(pageURL, referer: nil) else {
-            log.debug("tvron: failed to fetch channel page \(pageURL)")
+        guard let pageHTML = await tvronFetchHTML(effectivePage, referer: nil) else {
+            log.debug("tvron: failed to fetch channel page \(effectivePage)")
             return nil
         }
         let idPattern = #"(?:embed_player|player)\.php\?id=(\d+)"#
@@ -98,7 +121,7 @@ extension StreamProbe {
 
         // 2. Embed player -> serversData server codes.
         let embedURL = "https://tvron.me/embed_player.php?id=\(id)"
-        guard let embedHTML = await tvronFetchHTML(embedURL, referer: pageURL) else {
+        guard let embedHTML = await tvronFetchHTML(embedURL, referer: effectivePage) else {
             log.debug("tvron: failed to fetch embed player \(embedURL)")
             return nil
         }
