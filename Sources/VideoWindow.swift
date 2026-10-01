@@ -88,6 +88,12 @@ final class FloatingPanel: NSPanel {
 /// panel stays floating and doesn't steal focus until the user actually clicks
 /// it.
 final class FloatingPanelHostingView: NSHostingView<VideoWindowRoot> {
+    /// Height (from the window bottom) of the overlay PlayerControlCard's
+    /// clickable area — play/pause, mute, stop, volume, device buttons.
+    /// Must be generous enough to cover the whole expanded card + its padding
+    /// so those controls never fall into the drag zone.
+    private let bottomControlBand: CGFloat = 96
+
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
     }
@@ -98,7 +104,32 @@ final class FloatingPanelHostingView: NSHostingView<VideoWindowRoot> {
         }
         window?.makeKeyAndOrderFront(nil)
         window?.makeFirstResponder(self)
-        super.mouseDown(with: event)
+
+        // This panel is BORDERLESS (no title bar), so the only way to move it
+        // is to drag on its surface. `isMovableByWindowBackground` is set but
+        // is defeated here because this hosting view overrides `mouseDown` and
+        // swallows the physical drag. Restore dragging by handing the press to
+        // AppKit's canonical borderless-window mover (`performDrag`) whenever
+        // the click is NOT on an interactive control.
+        //
+        // SwiftUI controls (the overlay PlayerControlCard's buttons and the
+        // traffic-light dots) do not surface as distinct NSView/NSControl
+        // subclasses through `hitTest` (verified experimentally), so we detect
+        // them by the concrete bands they occupy on the surface:
+        //   • the PlayerControlCard sits at the bottom of the window, and
+        //   • the traffic-light dots sit in the top-left cluster.
+        // Everything between them is video surface → draggable. This keeps the
+        // bulk of the window movable while never regressing control clicks.
+        let point = convert(event.locationInWindow, from: nil)
+        let size = bounds.size
+        let overControl = size.height > 0
+            && (point.y <= bottomControlBand
+                || (point.x <= 90 && point.y >= size.height - 34))
+        if overControl {
+            super.mouseDown(with: event)
+        } else {
+            window?.performDrag(with: event)
+        }
     }
 }
 
