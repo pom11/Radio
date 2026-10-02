@@ -113,6 +113,10 @@ final class StreamStore: ObservableObject {
     func save() {
         let snapshot = streams
         let url = fileURL
+        // If iCloud sync is enabled, push the full list to iCloud on every local
+        // mutation (including add/remove/edit and refreshed URLs), so another
+        // device running Radio gets the same list.
+        StreamSync.shared.storeDidSave(streams: snapshot)
         Task.detached {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

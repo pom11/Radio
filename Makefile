@@ -24,7 +24,11 @@ build:
 	cp -R extension/* $(CONTENTS)/Resources/extension/
 	@if [ -f radio.pem ]; then cp radio.pem $(CONTENTS)/Resources/radio.pem; fi
 	@# Ad-hoc code sign for local development
-	codesign --force --sign - --deep $(APP_BUNDLE)
+	@# Entitlements: include the iCloud Key-Value store identifier so
+	@# NSUbiquitousKeyValueStore sync works in dev builds. The literal team-prefixed
+	@# value (RZ2G93W936.ro.pom.radio) is required because `codesign` does NOT
+	@# substitute $(...) Xcode build variables.
+	codesign --force --sign - --entitlements Radio.entitlements --deep $(APP_BUNDLE)
 	@echo "Built $(APP_BUNDLE)"
 
 install: build
