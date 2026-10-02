@@ -558,7 +558,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let referer = param("referer")
 
             if let pageUrl, let idx = sharedStore.indexByPageUrl(pageUrl) {
-                sharedStore.streams[idx].url = streamURL
+                // Guard against the source page URL (or a non-http(s) value) being
+                // pushed as the playable url — same trust rule as in-app refresh
+                // (StreamStore.refuseTainted). Keep the existing playable url if the
+                // candidate is tainted; still update name/type/referer/headers.
+                if !StreamStore.refuseTainted(streamURL, pageUrl: sharedStore.streams[idx].pageUrl) {
+                    sharedStore.streams[idx].url = streamURL
+                }
                 sharedStore.streams[idx].name = streamName
                 sharedStore.streams[idx].type = streamType
                 sharedStore.streams[idx].referer = referer
@@ -593,7 +599,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let newURL = param("url") ?? ""
             guard !pageUrl.isEmpty, !newURL.isEmpty else { return }
             guard let idx = sharedStore.indexByPageUrl(pageUrl) else { return }
-            sharedStore.streams[idx].url = newURL
+            // Same trust guard as applyRefreshedURL: never overwrite the playable url
+            // with the source page URL or a non-http(s) value; keep the existing url
+            // and only refresh referer/headers.
+            if !StreamStore.refuseTainted(newURL, pageUrl: sharedStore.streams[idx].pageUrl) {
+                sharedStore.streams[idx].url = newURL
+            }
             sharedStore.streams[idx].referer = nil
             sharedStore.streams[idx].headers = nil
             sharedStore.save()

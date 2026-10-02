@@ -166,6 +166,22 @@ final class StreamStore: ObservableObject {
         save()
     }
 
+    /// True if a candidate URL is "tainted" and must NOT be persisted as a stream's
+    /// playable url: either it is not a genuine http(s) URL (a resolver last-resort
+    /// fallback), or it equals the stream's own source page (pageUrl) — the exact
+    /// dead-page scenario where a source page URL would silently replace a working
+    /// stream URL. Every path that writes ``streams[idx].url`` must go through this
+    /// guard so the extension add/update handlers and the in-app refresh enforce the
+    /// same rule.
+    static func refuseTainted(_ candidate: String, pageUrl: String?) -> Bool {
+        let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") else { return true }
+        if let pageUrl {
+            return trimmed == pageUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return false
+    }
+
     /// Update a stream's playable URL/referer/headers after a successful source-page refetch.
     /// Preserves id/name/type/pageUrl. Returns the updated stream, or nil if not found.
     ///
@@ -177,9 +193,7 @@ final class StreamStore: ObservableObject {
     @discardableResult
     func applyRefreshedURL(id: UUID, url: String, referer: String?, headers: [String: String]?) -> Stream? {
         guard let idx = streams.firstIndex(where: { $0.id == id }) else { return nil }
-        let candidate = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        let isGenuine = candidate.hasPrefix("http://") || candidate.hasPrefix("https://")
-        if isGenuine && candidate != streams[idx].pageUrl {
+        if !Self.refuseTainted(url, pageUrl: streams[idx].pageUrl) {
             streams[idx].url = url
         }
         streams[idx].referer = referer
