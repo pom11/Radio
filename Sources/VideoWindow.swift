@@ -170,8 +170,9 @@ struct VideoWindowRoot: View {
     @State private var showControls = false
     @State private var isHovering = false
     @State private var hideTask: Task<Void, Never>?
-    /// Last drag location (view-local) for incremental window dragging on the
-    /// video surface. `nil` means no drag is in progress.
+    /// Last drag location in GLOBAL screen coordinates (bottom-left origin, the
+    /// same space as `NSEvent.mouseLocation`) for incremental window dragging on
+    /// the video surface. `nil` means no drag is in progress.
     @State private var lastDragLocation: NSPoint?
 
     /// Reactive: switches to audio-only when casting, even mid-session
@@ -281,18 +282,24 @@ struct VideoWindowRoot: View {
             .onTapGesture(perform: action)
     }
 
-    /// Drag gesture that moves the borderless video panel by dragging the video
-    /// surface. It only fires on a REAL drag (`minimumDistance: 4`), so a plain
-    /// click — including one on a control — is untouched. Incremental deltas
-    /// between successive `.onChanged` events are measured in the view's local
-    /// space and applied to the panel origin, which avoids the cumulative
-    /// drift you get from re-anchoring on `value.startLocation` while the
-    /// window is already moving.
+    /// Drag gesture that moves the borderless-looking video panel by dragging
+    /// the video surface. It only fires on a REAL drag (`minimumDistance: 4`),
+    /// so a plain click — including one on a control — is untouched and buttons
+    /// keep working.
+    ///
+    /// Deltas are computed in GLOBAL screen coordinates (`NSEvent.mouseLocation`,
+    /// macOS bottom-left origin), NOT in the gesture's view-local space. The
+    /// view attached to this gesture sits INSIDE the moving panel, so a
+    /// view-local `value.location` shifts MORE SLOWLY than the true screen delta
+    /// as the window follows the cursor — a feedback loop that makes the window
+    /// lag behind the cursor and land imprecisely. The global mouse location is
+    /// unaffected by the window moving, so there is no feedback: the window
+    /// tracks the cursor 1:1 with zero lag.
     private var windowDragGesture: some Gesture {
         DragGesture(minimumDistance: 4)
             .onChanged { value in
                 guard let panel else { return }
-                let location = NSPoint(x: value.location.x, y: value.location.y)
+                let location = NSEvent.mouseLocation  // global screen coords
                 if let last = lastDragLocation {
                     var origin = panel.frame.origin
                     origin.x += location.x - last.x
@@ -303,6 +310,7 @@ struct VideoWindowRoot: View {
             }
             .onEnded { _ in
                 lastDragLocation = nil
+                print("[VideoWindow] drag ended; frame = \(panel?.frame ?? .zero)")
             }
     }
 
