@@ -88,12 +88,6 @@ final class FloatingPanel: NSPanel {
 /// panel stays floating and doesn't steal focus until the user actually clicks
 /// it.
 final class FloatingPanelHostingView: NSHostingView<VideoWindowRoot> {
-    /// Height (from the window bottom) of the overlay PlayerControlCard's
-    /// clickable area — play/pause, mute, stop, volume, device buttons.
-    /// Must be generous enough to cover the whole expanded card + its padding
-    /// so those controls never fall into the drag zone.
-    private let bottomControlBand: CGFloat = 96
-
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
     }
@@ -105,31 +99,20 @@ final class FloatingPanelHostingView: NSHostingView<VideoWindowRoot> {
         window?.makeKeyAndOrderFront(nil)
         window?.makeFirstResponder(self)
 
-        // This panel is BORDERLESS (no title bar), so the only way to move it
-        // is to drag on its surface. `isMovableByWindowBackground` is set but
-        // is defeated here because this hosting view overrides `mouseDown` and
-        // swallows the physical drag. Restore dragging by handing the press to
-        // AppKit's canonical borderless-window mover (`performDrag`) whenever
-        // the click is NOT on an interactive control.
+        // Every click is forwarded straight to SwiftUI (`super` = NSHostingView's
+        // normal dispatch). Buttons — the overlay PlayerControlCard's play/pause,
+        // mute, stop, volume, device controls and the traffic-light dots — are
+        // therefore always hit by SwiftUI's OWN hit-testing, which knows the true
+        // geometry of every control regardless of window size, aspect ratio or
+        // audio-only collapse. No pixel bands, no guessed regions.
         //
-        // SwiftUI controls (the overlay PlayerControlCard's buttons and the
-        // traffic-light dots) do not surface as distinct NSView/NSControl
-        // subclasses through `hitTest` (verified experimentally), so we detect
-        // them by the concrete bands they occupy on the surface:
-        //   • the PlayerControlCard sits at the bottom of the window, and
-        //   • the traffic-light dots sit in the top-left cluster.
-        // Everything between them is video surface → draggable. This keeps the
-        // bulk of the window movable while never regressing control clicks.
-        let point = convert(event.locationInWindow, from: nil)
-        let size = bounds.size
-        let overControl = size.height > 0
-            && (point.y <= bottomControlBand
-                || (point.x <= 90 && point.y >= size.height - 34))
-        if overControl {
-            super.mouseDown(with: event)
-        } else {
-            window?.performDrag(with: event)
-        }
+        // Dragging is handled separately on the SwiftUI side: `VideoWindowRoot`
+        // attaches a `DragGesture` to the video surface (see `windowDragGesture`),
+        // and a drag only calls `performDrag` once the pointer actually moves past
+        // a small threshold AND the press wasn't claimed by a control. Since this
+        // AppKit method never performs the drag itself and never swallows a click,
+        // there is no path by which a button press can be lost to window dragging.
+        super.mouseDown(with: event)
     }
 }
 
@@ -187,6 +170,9 @@ struct VideoWindowRoot: View {
     @State private var showControls = false
     @State private var isHovering = false
     @State private var hideTask: Task<Void, Never>?
+    /// Last drag location (view-local) for incremental window dragging on the
+    /// video surface. `nil` means no drag is in progress.
+    @State private var lastDragLocation: NSPoint?
 
     /// Reactive: switches to audio-only when casting, even mid-session
     private var isAudioOnly: Bool {
@@ -210,6 +196,14 @@ struct VideoWindowRoot: View {
                 ZStack {
                     AVPlayerLayerContainer(player: player.avPlayer)
                         .background(Color.black)
+                        // Only the video surface is draggable. Attaching the
+                        // drag here (not to the whole window) lets SwiftUI's own
+                        // hit-testing decide control vs surface: a press on a
+                        // traffic-light or a PlayerControlCard button is claimed
+                        // by that control (its gesture has precedence as the
+                        // topmost interactive view), while a press that lands on
+                        // exposed video and actually moves triggers the drag.
+                        .gesture(windowDragGesture)
 
                     // Top bar: traffic lights (left) + title (right)
                     VStack {
@@ -285,6 +279,31 @@ struct VideoWindowRoot: View {
             .frame(width: 12, height: 12)
             .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
             .onTapGesture(perform: action)
+    }
+
+    /// Drag gesture that moves the borderless video panel by dragging the video
+    /// surface. It only fires on a REAL drag (`minimumDistance: 4`), so a plain
+    /// click — including one on a control — is untouched. Incremental deltas
+    /// between successive `.onChanged` events are measured in the view's local
+    /// space and applied to the panel origin, which avoids the cumulative
+    /// drift you get from re-anchoring on `value.startLocation` while the
+    /// window is already moving.
+    private var windowDragGesture: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                guard let panel else { return }
+                let location = NSPoint(x: value.location.x, y: value.location.y)
+                if let last = lastDragLocation {
+                    var origin = panel.frame.origin
+                    origin.x += location.x - last.x
+                    origin.y += location.y - last.y
+                    panel.setFrameOrigin(origin)
+                }
+                lastDragLocation = location
+            }
+            .onEnded { _ in
+                lastDragLocation = nil
+            }
     }
 
     private var titleText: String {
