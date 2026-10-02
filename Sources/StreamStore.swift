@@ -164,10 +164,20 @@ final class StreamStore: ObservableObject {
 
     /// Update a stream's playable URL/referer/headers after a successful source-page refetch.
     /// Preserves id/name/type/pageUrl. Returns the updated stream, or nil if not found.
+    ///
+    /// Guard: the source page (pageUrl) is NOT a playable URL. If the caller passes a
+    /// URL equal to the stream's own pageUrl (or a non-http(s) value — a resolver
+    /// last-resort fallback), we refuse to overwrite the existing playable URL, so a
+    /// dead page URL can never silently replace a working stream URL. Referer/headers
+    /// are still updated in that case (they describe the source, not the playable URL).
     @discardableResult
     func applyRefreshedURL(id: UUID, url: String, referer: String?, headers: [String: String]?) -> Stream? {
         guard let idx = streams.firstIndex(where: { $0.id == id }) else { return nil }
-        streams[idx].url = url
+        let candidate = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isGenuine = candidate.hasPrefix("http://") || candidate.hasPrefix("https://")
+        if isGenuine && candidate != streams[idx].pageUrl {
+            streams[idx].url = url
+        }
         streams[idx].referer = referer
         streams[idx].headers = headers
         save()

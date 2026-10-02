@@ -33,6 +33,39 @@ final class StreamPlayer: NSObject, ObservableObject {
     private static let maxAutoRefreshAttempts = 3
     private static let refreshBackoffBase: TimeInterval = 10
 
+    /// True if a resolved URL is a genuine playable http(s) stream — as opposed
+    /// to a resolver fallback that returned the source page itself. Only such a
+    /// URL should ever be persisted as a stream's playable url.
+    static func isGenuineStreamURL(_ candidate: String) -> Bool {
+        let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://")
+    }
+
+    /// Lightweight liveness probe for a resolved stream URL that isn't a literal
+    /// .m3u8/.mpd manifest (e.g. a .php proxy from a rotated server list that
+    /// could be dead). Performs a short GET (a HEAD has no body, so it can't
+    /// detect the 0-byte dead-proxy case) with a tight timeout so refresh adds
+    /// minimal latency; on any error/timeout it returns false and the caller
+    /// keeps the existing saved URL ("Refresh failed").
+    static func verifyStreamURL(_ urlString: String) async -> Bool {
+        guard let url = URL(string: urlString) else { return false }
+        do {
+            var request = URLRequest(url: url, timeoutInterval: 5)
+            request.httpMethod = "GET"
+            request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                return false
+            }
+            // A dead proxy answers 200 with a 0-byte body — not a playable stream.
+            // Any non-empty 2xx body is treated as verified (a real HLS proxy
+            // serves the manifest body even if it's typed text/html).
+            return !data.isEmpty
+        } catch {
+            return false
+        }
+    }
+
     private var refreshTask: Task<Void, Never>?
     private var refreshRetryTask: DispatchWorkItem?
     private var autoRefreshAttempts = 0
@@ -351,6 +384,33 @@ final class StreamPlayer: NSObject, ObservableObject {
             guard let result else {
                 self.statusText = "Refresh failed"
                 log.error("refreshFromSource: resolve failed for \(stream.name) from \(pageUrl)")
+                if !manual {
+                    self.scheduleRefreshRetry(stream)
+                }
+                return
+            }
+
+            // Only persist a genuinely resolved playable URL. The source page
+            // itself (pageUrl) is NOT a playable stream: if the resolver fell
+            // through and returned the page as the "resolved" URL (its last
+            // resort), treat it as a failure — keep the previously working URL
+            // and surface "Refresh failed" instead of overwriting it with a dead
+            // page URL (that taint was observed in the user's config). For
+            // non-literal-manifest URLs (.php proxies from a rotated server
+            // list) also require the resolved URL to verify as a live stream,
+            // so a dead proxy never clobbers a working saved URL either.
+            let literalManifest = result.url.contains(".m3u8") || result.url.contains(".mpd")
+            let verified: Bool
+            if literalManifest {
+                verified = true
+            } else {
+                verified = await StreamPlayer.verifyStreamURL(result.url)
+            }
+            guard StreamPlayer.isGenuineStreamURL(result.url),
+                  result.url != pageUrl,
+                  verified else {
+                self.statusText = "Refresh failed"
+                log.error("refreshFromSource: \(stream.name) resolved to unverifiable URL \(result.url); keeping existing url")
                 if !manual {
                     self.scheduleRefreshRetry(stream)
                 }

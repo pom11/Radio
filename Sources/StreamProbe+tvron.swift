@@ -55,11 +55,21 @@ extension StreamProbe {
         return s
     }
 
-    /// Regex-extract the first playable stream literal (m3u8 or mpd) from HTML.
-    private static func tvronExtractStreamURL(_ html: String) -> (url: String, format: String)? {
+    /// Regex-extract the first playable stream literal from player.php HTML.
+    /// tvron serves live streams in two forms:
+    ///   (A) a direct .m3u8 / .mpd manifest literal  -> matched by the patterns below
+    ///   (B) a .php PROXY URL literal in the config's file: field
+    ///       (e.g. file: "https://akamed.site/proxy.php?id=hbo2"). The proxy
+    ///       endpoint itself returns the stream, so we accept any http(s) file:
+    ///       URL — we do NOT require the extension to be m3u8/mpd.
+    /// Returns the URL, a format hint, and its content type.
+    private static func tvronExtractStreamURL(_ html: String) -> (url: String, format: String, contentType: String)? {
+        // (A) Direct literal manifests.
         let patterns = [
-            (regex: #"(https?://[^\s"'<>]+\.m3u8[^\s"'<>]*)"#, format: "hls"),
-            (regex: #"(https?://[^\s"'<>]+\.mpd[^\s"'<>]*)"#, format: "dash"),
+            (regex: #"(https?://[^\s"'<>]+\.m3u8[^\s"'<>]*)"#, format: "hls",
+             contentType: "application/x-mpegURL"),
+            (regex: #"(https?://[^\s"'<>]+\.mpd[^\s"'<>]*)"#, format: "dash",
+             contentType: "application/dash+xml"),
         ]
         for p in patterns {
             if let matches = try? NSRegularExpression(pattern: p.regex)
@@ -69,10 +79,44 @@ extension StreamProbe {
                let range = Range(first.range(at: 1), in: html) {
                 let streamURL = String(html[range])
                     .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-                return (streamURL, p.format)
+                return (streamURL, p.format, p.contentType)
             }
         }
+
+        // (B) .php / generic http(s) proxy URL from the player config's file:
+        // field. Honour the enclosing mimeType if present (x-mpegURL => HLS),
+        // else default to HLS.
+        if let proxy = tvronExtractProxyURL(html) {
+            let contentType = tvronPlayerMimeType(html) ?? "application/x-mpegURL"
+            return (proxy, "http", contentType)
+        }
+
         return nil
+    }
+
+    /// Extract an http(s) URL from the player config's file: field. Used for
+    /// .php proxy servers where the extension is not m3u8/mpd, e.g.
+    /// file: "https://akamed.site/proxy.php?id=hbo2".
+    private static func tvronExtractProxyURL(_ html: String) -> String? {
+        let pattern = #"["']?file["']?\s*:\s*["'](https?://[^"'\s<>]+)["']"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        guard let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              match.numberOfRanges > 1,
+              let range = Range(match.range(at: 1), in: html) else { return nil }
+        let url = String(html[range]).trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+        guard url.hasPrefix("http://") || url.hasPrefix("https://") else { return nil }
+        return url
+    }
+
+    /// Extract the enclosing mimeType (e.g. mimeType: "application/x-mpegURL")
+    /// from the player config so a proxy URL gets a correct content type.
+    private static func tvronPlayerMimeType(_ html: String) -> String? {
+        let pattern = #"["']?mimeType["']?\s*:\s*["']([^"']+)["']"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        guard let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              match.numberOfRanges > 1,
+              let range = Range(match.range(at: 1), in: html) else { return nil }
+        return String(html[range]).trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
     }
 
     /// Resolve a tvron.me channel page to a playable stream URL by following the
@@ -154,7 +198,7 @@ extension StreamProbe {
             }
             log.info("tvron: resolved \(pageURL) -> \(hit.url)")
             return ResolveResult(url: hit.url, cast_url: hit.url,
-                                 content_type: hit.format == "hls" ? "application/x-mpegURL" : "application/dash+xml",
+                                 content_type: hit.contentType,
                                  is_live: true, format: hit.format,
                                  title: nil, youtube_id: nil)
         }
