@@ -195,6 +195,8 @@ struct StreamsDetail: View {
     @ObservedObject var store: StreamStore
     @Binding var editingStream: Stream?
 
+    @State private var qrExportStreams: [Stream]?
+
     private var audioStreams: [Stream] { store.audioStreams }
     private var videoStreams: [Stream] { store.videoStreams }
     private var channelStreams: [Stream] { store.channelStreams }
@@ -253,6 +255,14 @@ struct StreamsDetail: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Streams")
+        .sheet(isPresented: Binding(
+            get: { qrExportStreams != nil },
+            set: { if !$0 { qrExportStreams = nil } }
+        )) {
+            if let streams = qrExportStreams {
+                QRExportSheet(streams: streams)
+            }
+        }
     }
 
     private func channelsFor(_ platform: StreamPlatform) -> [Stream] {
@@ -310,6 +320,7 @@ struct StreamsDetail: View {
                 }
             }
             Divider()
+            Button("Export QR…") { qrExportStreams = [stream] }
             Button("Edit...") { editingStream = stream }
             Button("Delete", role: .destructive) {
                 if let p = manager.players.first(where: { $0.currentStream?.url == stream.url }) {
@@ -418,6 +429,7 @@ struct GeneralDetail: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var isCollectingLogs = false
     @State private var logStatus: String?
+    @State private var showExportAllQR = false
 
     var body: some View {
         Form {
@@ -492,6 +504,18 @@ struct GeneralDetail: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                LabeledContent {
+                    Button("Export All") { showExportAllQR = true }
+                        .disabled(store.streams.isEmpty)
+                } label: {
+                    VStack(alignment: .leading) {
+                        Text("Export Streams as QR")
+                        Text("Generate a QR for every saved stream to transfer them to the iOS app by scanning")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             } header: {
                 Text("System")
             }
@@ -524,6 +548,9 @@ struct GeneralDetail: View {
         }
         .formStyle(.grouped)
         .navigationTitle("General")
+        .sheet(isPresented: $showExportAllQR) {
+            QRExportSheet(streams: store.streams)
+        }
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
