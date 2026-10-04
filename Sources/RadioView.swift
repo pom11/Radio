@@ -482,18 +482,6 @@ struct GeneralDetail: View {
                     }
                 }
 
-                Toggle(isOn: Binding(
-                    get: { StreamSync.shared.isEnabled },
-                    set: { StreamSync.shared.setEnabled($0) }
-                )) {
-                    VStack(alignment: .leading) {
-                        Text("Sync streams via iCloud")
-                        Text("Keep your saved streams in sync across all your Macs. Requires you to be signed in to iCloud.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
                 LabeledContent {
                     Button("Reload") { store.load() }
                 } label: {

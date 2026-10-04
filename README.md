@@ -205,24 +205,15 @@ xcrun safari-web-extension-converter extension/ \
 
 Streams are stored in `~/.config/radio/streams.json`. You can edit this file directly — Radio picks up changes when you click Reload in settings.
 
-## iCloud sync
-
-Settings → General → **Sync streams via iCloud** keeps your saved stream list in sync across all your Macs, using `NSUbiquitousKeyValueStore` (iCloud key-value storage) — no CloudKit container, no extra daemon.
-
-Semantics:
-- Local `streams.json` remains the source of truth for local edits. Every local mutation (add / remove / edit / sourced refresh) pushes the full list to iCloud immediately when sync is on.
-- Turning sync **on** performs a one-time merge of the iCloud copy into your local list (union by stream id; your local version wins where a stream id exists in both), then persists and pushes the merged union.
-- Turning sync **off** stops observing and stops writing to iCloud. The iCloud copy is deliberately **not** deleted (other devices keep it); your local list stays exactly as it is.
-- While synced, changes made on another device (including a refreshed/updated stream URL) propagate live via `didChangeExternallyNotification`.
-- Deletes are not tombstoned: a stream kept by either device survives, so it only leaves iCloud when both devices remove it. Sync events are logged under the `StreamSync` subsystem.
-
-### Signing / entitlements
-
-iCloud key-value storage needs the `com.apple.developer.ubiquity-kvstore-identifier` entitlement, provided in `Radio.entitlements` in the repo root. The value uses the literal team-prefixed bundle id (`RZ2G93W936.ro.pom.radio`) because the build signs with `codesign` (which does not expand `$(...)` Xcode variables).
-
-The app is **not** sandboxed and remains so — iCloud key-value storage does **not** require the App Sandbox for a Developer-ID-distributed app (only Mac App Store distribution mandates sandboxing). This deliberately keeps every existing feature working unchanged: direct writes to `~/.config/radio/streams.json`, the `HeaderProxy`/`CastProxy` local listening listeners (`NWListener`), UDP/DAAP/Cast discovery, subprocess tools (ffmpeg/yt-dlp/streamlink), and launch-at-login. Do **not** add `com.apple.security.app-sandbox` without auditing those paths first.
-
-The `Makefile` `build` target signs the local dev bundle with `Radio.entitlements`. At release the orchestrator must include `Radio.entitlements` in the notarized Developer ID signing (add `--entitlements Radio.entitlements` to the release `codesign` invocation) and enable the iCloud Key-Value capability for the `ro.pom.radio` App ID in the developer portal so the provisioning profile carries it. Un-sandboxed Developer ID apps only need the header-entitlement to function; the profile must still be built against an App ID with iCloud Key-Value Storage enabled.
+> **Note on iCloud sync (removed in v4.5.4):** v4.5.3 shipped an experimental
+> iCloud Key-Value sync of the saved stream list. It was removed because the
+> `com.apple.developer.ubiquity-kvstore-identifier` entitlement is a **restricted
+> entitlement** that AMFI rejects on ad-hoc-signed development binaries at exec
+> (SIGKILL, app won't launch). A properly-provisioned path exists only for
+> Developer-ID/Mac-App-Store signed builds with the capability in a provisioning
+> profile, and iCloud Key-Value is not reliably available to a non-sandboxed
+> Developer-ID app. Removing the feature restores a launchable app; stream
+> storage remains purely local in `streams.json`.
 
 ## Project structure
 
@@ -242,7 +233,6 @@ Sources/
   MenuBarPopover.swift      Menu bar popover UI
   RadioView.swift           Settings window UI
   StreamStore.swift         Stream model, JSON persistence
-  StreamSync.swift          iCloud key-value sync of the stream list
   HotKeyManager.swift       Global hotkey registration (Carbon)
   RadioIntents.swift        Siri & Spotlight intents (14 intents)
   VideoWindow.swift         Floating video window (NSPanel + SwiftUI)
