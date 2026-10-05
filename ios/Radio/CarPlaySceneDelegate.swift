@@ -1,5 +1,6 @@
 import CarPlay
 import UIKit
+import Combine
 
 /// CarPlay integration for the iOS Radio app (iOS 16+ CarPlay framework).
 ///
@@ -24,6 +25,7 @@ import UIKit
 final class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
 
     private var interfaceController: CPInterfaceController?
+    private var storeCancellable: AnyCancellable?
 
     // MARK: - CPTemplateApplicationSceneDelegate
 
@@ -35,6 +37,17 @@ final class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         interfaceController.delegate = self
         let root = makeRootTemplate()
         interfaceController.setRootTemplate(root, animated: true, completion: nil)
+
+        // Keep the CarPlay list current with the phone's stream list: if the
+        // user adds/removes streams while CarPlay is connected, rebuild the
+        // root template so the driver sees the live set. Without this the list
+        // would be frozen at the moment of connection.
+        storeCancellable = StreamStore.shared.$streams
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, let ic = self.interfaceController else { return }
+                ic.setRootTemplate(self.makeRootTemplate(), animated: false, completion: nil)
+            }
     }
 
     func templateApplicationScene(
