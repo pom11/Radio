@@ -9,6 +9,11 @@ struct ContentView: View {
     @State private var showScanner = false
     @State private var bannerText: String?
     @State private var bannerFailed = false
+    /// Non-nil presents an SFSafariViewController over that URL — the "Open in
+    /// Browser" fallback for a channel the app can't play in-app.
+    @State private var safariURL: URL?
+    /// Tracks the player's current open-in-browser offer so we can prompt.
+    @State private var offeredOpenInBrowser: URL?
 
     var body: some View {
         NavigationStack {
@@ -30,10 +35,12 @@ struct ContentView: View {
                     .listRowSeparator(.hidden)
                 } else {
                     ForEach(store.streams) { stream in
-                        StreamRow(stream: stream, manager: manager)
-                            .onTapGesture {
-                                manager.play(stream: stream)
-                            }
+                        StreamRow(stream: stream, manager: manager) {
+                            openInBrowser(stream)
+                        }
+                        .onTapGesture {
+                            manager.play(stream: stream)
+                        }
                     }
                     .onDelete { indexSet in
                         let toDelete = indexSet.compactMap { store.streams.indices.contains($0) ? store.streams[$0] : nil }
@@ -98,6 +105,57 @@ struct ContentView: View {
                 PlayerBar(manager: manager)
             }
         }
+        // "Open in Browser" fallback: present the channel page in Safari.
+        .sheet(isPresented: .init(get: {
+            safariURL != nil
+        }, set: { showing in
+            if !showing { safariURL = nil }
+        })) {
+            if let safariURL {
+                SafariView(url: safariURL)
+            }
+        }
+        // When a channel can't resolve to a playable URL in-app, the player sets
+        // openInBrowserURL — prompt the user with a clear "Open in Browser"
+        // affordance instead of leaving them with a dead "Failed".
+        .onChange(of: manager.player.openInBrowserURL) { newURL in
+            guard let newURL else { offeredOpenInBrowser = nil; return }
+            // Only prompt once per URL (dismissing then tapping again re-offs it).
+            if offeredOpenInBrowser == nil {
+                offeredOpenInBrowser = newURL
+            }
+        }
+        .alert("This channel can\u{2019}t play in-app", isPresented: .init(get: {
+            offeredOpenInBrowser != nil
+        }, set: { showing in
+            if !showing { offeredOpenInBrowser = nil }
+        })) {
+            Button("Open in Browser") {
+                safariURL = offeredOpenInBrowser
+                offeredOpenInBrowser = nil
+            }
+            Button("Cancel", role: .cancel) {
+                offeredOpenInBrowser = nil
+            }
+        } message: {
+            Text("The stream couldn\u{2019}t be resolved to a playable URL. Open its page in Safari to watch the live stream (note: playback stays in the browser, not in the app).")
+        }
+    }
+
+    /// Hand the user off to Safari for a channel they can't play in-app.
+    /// Prefers the channel's explicit `pageUrl`, falling back to its url.
+    private func openInBrowser(_ stream: Stream) {
+        guard let url = browserURL(for: stream) else { return }
+        safariURL = url
+    }
+
+    /// The URL to open for a stream's "Open in Browser" affordance: `pageUrl`
+    /// if set, else the stream url — but only if it's a real http(s) page.
+    private func browserURL(for stream: Stream) -> URL? {
+        let page = stream.pageUrl ?? stream.url
+        let trimmed = page.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") else { return nil }
+        return URL(string: trimmed)
     }
 
     /// Ingest a decoded QR string the same way any radio://add deep link is
@@ -162,6 +220,9 @@ private struct PlayerBar: View {
 struct StreamRow: View {
     let stream: Stream
     @ObservedObject var manager: PlayerManager
+    /// Called when the user chooses "Open in Browser" from the context menu.
+    /// Only offered for `.channel` streams (which may not resolve in-app).
+    var onOpenInBrowser: () -> Void
 
     private var isCurrent: Bool { manager.currentStream?.id == stream.id }
     private var isPlaying: Bool { isCurrent && manager.isPlaying }
@@ -187,5 +248,25 @@ struct StreamRow: View {
             }
         }
         .contentShape(Rectangle())
+        // Channels can't always be played in-app (YouTube/Twitch/Kick streams
+        // are signed/DRM'd). Always offer long-press → "Open in Browser" so the
+        // user has an escape hatch regardless of whether resolution succeeded.
+        .contextMenu {
+            if stream.type == .channel, let page = browserPage, !page.isEmpty {
+                Button {
+                    onOpenInBrowser()
+                } label: {
+                    Label("Open in Browser", systemImage: "safari")
+                }
+            }
+        }
+    }
+
+    /// The page this stream should open in the browser for `pageUrl ?? url`.
+    private var browserPage: String? {
+        let page = stream.pageUrl ?? stream.url
+        let trimmed = page.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") else { return nil }
+        return trimmed
     }
 }

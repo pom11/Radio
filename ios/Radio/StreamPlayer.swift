@@ -18,18 +18,34 @@ final class StreamPlayer: NSObject, ObservableObject {
     @Published var statusText: String = ""
     /// True while AVPlayer is routing audio to an external (AirPlay) destination.
     @Published var isExternalPlayback = false
+    /// For a `.channel` stream that could not resolve to a playable URL in-app,
+    /// this carries the channel's page to hand to "Open in Browser" (Safari).
+    /// nil means no open-in-browser is currently being offered. Cleared on stop
+    /// and on any successful play.
+    @Published var openInBrowserURL: URL?
 
     private(set) var avPlayer: AVPlayer?
     private var cancellables = Set<AnyCancellable>()
     private var playTask: Task<Void, Never>?
     private var registeredInterruptObserver = false
 
-    /// Resolve a Stream to a playable AVPlayerItem.
+    /// Resolve a Stream to a playable URL string.
     ///
     /// `resolve` is pluggable so a future card can insert full yt-dlp-style
-    /// resolution. The default returns the stream's own url — a direct audio/video
-    /// stream. The `refuseTainted` guard runs regardless: a pageUrl is never played.
-    var resolve: (Stream) async -> String? = { stream in stream.url }
+    /// resolution. The default:
+    /// - audio / video direct streams → their own url (plays via AVPlayer).
+    /// - `.channel` streams → `ChannelResolver.resolvePlayableURL`, a best-effort
+    ///   native scrape of the source page for a literal HLS/DASH manifest. Most
+    ///   YouTube/Twitch/Kick live channels yield nil here (their streams are
+    ///   signed/DRM'd) — the caller then sets `openInBrowserURL` so the UI offers
+    ///   "Open in Browser" instead of a dead failure. The `refuseTainted` guard
+    ///   still runs on the resolved value: a pageUrl is never played.
+    var resolve: (Stream) async -> String? = { stream in
+        if stream.type == .channel {
+            return await ChannelResolver.resolvePlayableURL(for: stream)
+        }
+        return stream.url
+    }
 
     deinit {
         playTask?.cancel()
@@ -91,9 +107,15 @@ final class StreamPlayer: NSObject, ObservableObject {
         currentStream = stream
         isPlaying = true
         statusText = "Connecting..."
+        // Starting a fresh play; clear any stale open-in-browser offer.
+        openInBrowserURL = nil
 
-        // Trust guard: never play a pageUrl as the playable url.
-        if StreamStore.refuseTainted(stream.url, pageUrl: stream.pageUrl) {
+        // Trust guard: never play a pageUrl as the playable url. Skipped for
+        // `.channel` streams — for a channel `url` IS the source page by design,
+        // and resolving it (not rejecting it up front) is exactly what this card
+        // enables. The resolved value is independently taint-checked below, so a
+        // page can never actually reach AVPlayer.
+        if stream.type != .channel, StreamStore.refuseTainted(stream.url, pageUrl: stream.pageUrl) {
             statusText = stream.type == .channel ? "Offline" : "Failed"
             isPlaying = false
             return
@@ -103,16 +125,14 @@ final class StreamPlayer: NSObject, ObservableObject {
             guard let self else { return }
             guard !Task.isCancelled else { return }
             guard let resolved = await self.resolve(stream) else {
-                self.statusText = "Failed"
-                self.isPlaying = false
+                self.handleResolveFailure(stream)
                 return
             }
             guard !Task.isCancelled else { return }
             // Re-check the taint guard on the finally-resolved URL too, so even a
             // resolver that falls back to the source page cannot play it.
             if StreamStore.refuseTainted(resolved, pageUrl: stream.pageUrl) {
-                self.statusText = stream.type == .channel ? "Offline" : "Failed"
-                self.isPlaying = false
+                self.handleResolveFailure(stream)
                 return
             }
             guard let url = URL(string: resolved) else {
@@ -121,6 +141,24 @@ final class StreamPlayer: NSObject, ObservableObject {
                 return
             }
             self.startPlayback(url: url, stream: stream)
+        }
+    }
+
+    /// Called when a stream's URL could not be resolved to a trusted playable
+    /// URL (or the resolved value was tainted). For `.channel` streams this is
+    /// the graceful-fallback path: instead of a dead "Failed", expose the
+    /// channel's page via `openInBrowserURL` so the UI offers "Open in Browser"
+    /// (Safari) — the honest, working way to watch a signed/DRM live stream the
+    /// app cannot extract in pure Swift.
+    private func handleResolveFailure(_ stream: Stream) {
+        statusText = "Failed"
+        isPlaying = false
+        if stream.type == .channel {
+            let page = stream.pageUrl ?? stream.url
+            if let url = URL(string: page), StreamStore.refuseTainted(page, pageUrl: nil) == false {
+                openInBrowserURL = url
+                statusText = "Open in browser"
+            }
         }
     }
 
@@ -163,6 +201,7 @@ final class StreamPlayer: NSObject, ObservableObject {
         currentStream = nil
         isPlaying = false
         isExternalPlayback = false
+        openInBrowserURL = nil
         statusText = ""
     }
 
