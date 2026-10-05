@@ -1,0 +1,57 @@
+name: Radio
+options:
+  bundleIdPrefix: ro.pom
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGNING_ALLOWED: "NO"
+targets:
+  Radio:
+    type: application
+    platform: iOS
+    sources:
+      - path: Radio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ro.pom.radio.ios
+        # CarPlay audio entitlement (provisioning-profile-bound; see
+        # Radio/Radio.entitlements). With CODE_SIGNING_ALLOWED=NO the unsigned
+        # base build ignores this and still launches — the entitlement only takes
+        # effect once a profile that carries `com.apple.developer.carplay-audio`
+        # is used at signing time.
+        CODE_SIGN_ENTITLEMENTS: Radio/Radio.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_EMIT_LOC_STRINGS: YES
+    info:
+      path: Radio/Info.plist
+      properties:
+        NSCameraUsageDescription: Camera access is used to scan the macOS QR code and import a stream into Radio.
+        CFBundleURLTypes:
+          - CFBundleURLName: ro.pom.radio.ios
+            CFBundleURLSchemes:
+              - radio
+        UILaunchScreen: {}
+  RadioTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: RadioTests
+    dependencies:
+      - target: Radio
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Radio.app/Radio"
+        BUNDLE_LOADER: "$(TEST_HOST)"
