@@ -24,7 +24,14 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     /// and on any successful play.
     @Published var openInBrowserURL: URL?
 
-    private(set) var avPlayer: AVPlayer?
+    /// The live AVPlayer, or nil while connecting / after stop.
+    ///
+    /// Published because the video surface has to REACT to it: an AVPlayer draws
+    /// nothing until an AVPlayerLayer is attached (see VideoSurface.swift), and
+    /// the layer must be re-pointed at every new player — a plain `var` would
+    /// leave SwiftUI rendering a surface bound to a player that no longer
+    /// exists. Assigned only on the main actor (playback start / stop).
+    @Published private(set) var avPlayer: AVPlayer?
     private var cancellables = Set<AnyCancellable>()
     private var playTask: Task<Void, Never>?
     private var registeredInterruptObserver = false
