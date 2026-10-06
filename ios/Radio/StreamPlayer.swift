@@ -39,6 +39,16 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     /// like macOS `StreamPlayer.isRefreshing`.
     @Published private(set) var isRefreshing = false
 
+    /// The current stream is PLAYED-AND-DEAD: the automatic recovery budget is
+    /// spent and no further attempt is coming. `isPlaying == false` alone does
+    /// NOT capture this — a paused stream is also not playing, and the audio
+    /// bar has always hidden itself on pause. This flag exists so the dock can
+    /// keep the bar (and its Refresh affordance) on screen exactly for the
+    /// state the user needs it: a stream that failed for good and might work
+    /// with a fresh URL. Set by giveUpOnPlayback; cleared by any new play or
+    /// stop.
+    @Published private(set) var isFailed = false
+
     /// Called when a refetch produced a genuinely new playable URL, so the
     /// owner persists it (PlayerManager → StreamStore.applyRefreshedURL).
     /// Receives the stream with id/name/type/pageUrl preserved and the fresh
@@ -294,6 +304,7 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     private func teardownPlayback() {
         playTask?.cancel()
         playTask = nil
+        isFailed = false   // a new stream is a clean slate; failure is per-stream
         cancellables.removeAll()
         avPlayer?.pause()
         avPlayer?.replaceCurrentItem(with: nil)
@@ -385,6 +396,15 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
                 verified = false
             }
 
+            // Re-check CURRENTNESS after the probe too: `verifyURL` is a second
+            // network hop (up to 5s), and writing a URL / restarting playback
+            // for a stream the user switched away from mid-probe is exactly the
+            // cross-stream bug the first check exists to prevent.
+            guard self.currentStream?.id == stream.id else {
+                log.info("refresh for \(stream.name, privacy: .public) finished late; no longer current, discarding")
+                return
+            }
+
             switch self.refetch.outcome(for: candidate, stream: stream, verified: verified) {
             case .persist(let freshURL):
                 var refreshed = stream
@@ -459,7 +479,14 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     /// The honest end state for a stream that cannot play: no phantom
     /// "Playing", no Lock Screen card, and for a channel the working escape
     /// hatch (Safari) instead of a dead failure.
+    ///
+    /// Sets `isFailed` — the state the dock needs to keep the bar (with its
+    /// Refresh affordance) visible: the stream played and died, and a manual
+    /// refetch is now the user's only lever. Deliberately does NOT tear the
+    /// player down: `currentStream` must survive so the bar can name the
+    /// stream the Refresh button applies to.
     private func giveUpOnPlayback(_ stream: Stream, reason: String) {
+        isFailed = true
         statusText = reason
         isPlaying = false
         nowPlaying.clear()
@@ -551,10 +578,13 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     @discardableResult
     func nowPlayingResume() -> Bool {
         guard let stream = currentStream else { return false }
-        if avPlayer == nil {
-            // Item was torn down (e.g. after a failure): the user pressing play
-            // again IS a fresh session — they are asking for another go, so it
-            // gets a fresh recovery budget.
+        // Either no item at all (torn down), or an item whose status is
+        // .failed: a failed AVPlayerItem NEVER recovers by calling play()
+        // again — its status will not re-fire, so "resume" on it would be a
+        // dead button. Both cases need a fresh play, and the user pressing
+        // play IS a fresh session — they are asking for another go, so it
+        // gets a fresh recovery budget.
+        if avPlayer == nil || avPlayer?.currentItem?.status == .failed {
             play(stream, userInitiated: true)
             return true
         }

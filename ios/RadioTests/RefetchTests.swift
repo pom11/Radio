@@ -175,6 +175,19 @@ final class RefetchTests: XCTestCase {
         XCTAssertEqual(machine.outcome(for: page, stream: channel, verified: true), .rejected(page))
     }
 
+    func testIdentityWithAManifestShapedPageIsAccepted() {
+        // The one honest identity case: a channel added as `.../live.m3u8`
+        // (ChannelResolver plays that url directly, so the refetch resolver
+        // hands it back unchanged). Refusing it would make Refresh on such a
+        // channel ALWAYS say "Refresh failed" while the stream plays fine.
+        let machine = RefetchMachine()
+        let manifestPage = "https://cdn.example.com/live/stream.m3u8"
+        let channel = stream(type: .channel, url: manifestPage)
+        XCTAssertEqual(machine.outcome(for: manifestPage, stream: channel, verified: false),
+                       .persist(manifestPage))
+        // Contrast (previous test): identity with an HTML page stays rejected.
+    }
+
     func testNonHTTPSchemeIsRejected() {
         let machine = RefetchMachine()
         let s = stream(url: good, pageUrl: page)

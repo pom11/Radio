@@ -212,9 +212,18 @@ final class RefetchMachine {
 
         // Pass the *source page*, not just `pageUrl`: for a channel whose url is
         // itself the page, `pageUrl` is nil and `refuseTainted` alone would let
-        // the page be saved as the playable url.
+        // an HTML page be saved as the playable url.
         let page = Self.sourcePage(of: stream)
         if StreamStore.refuseTainted(trimmed, pageUrl: page) {
+            // One exception, and only this one: a page that IS a literal
+            // manifest (a channel added as, say, `.../live.m3u8`). Then the
+            // resolver handing the page back is not a fall-through — the page
+            // genuinely is the stream (ChannelResolver treats a direct manifest
+            // as playable, and play() plays it). Identity with a NON-manifest
+            // page stays tainted: that is the observed bug — HTML saved as url.
+            if trimmed == page, Self.isLiteralManifest(page ?? "") {
+                return .persist(trimmed)
+            }
             return .rejected(trimmed)
         }
         if !Self.isLiteralManifest(trimmed) && !verified {

@@ -162,6 +162,16 @@ struct ContentView: View {
                 PlayerBar(manager: manager, showsTransport: true)
             } else if manager.isPlaying {
                 PlayerBar(manager: manager)
+            } else if manager.isFailed {
+                // The stream played and died for good (recovery budget spent).
+                // The bar MUST stay here: this is the one state where the user
+                // needs it most — it carries the honest "Failed" line, a Play
+                // that retries from scratch with a fresh budget, Stop to clear
+                // it, and the Refresh button when the stream has a source page.
+                // (`isPlaying` alone can't express this: a paused stream is
+                // also not playing, and the audio bar has always hidden itself
+                // on pause — this keeps that behaviour byte-identical.)
+                PlayerBar(manager: manager, showsTransport: true)
             }
         }
     }
@@ -255,6 +265,30 @@ private struct PlayerBar: View {
                     .lineLimit(1)
             }
             Spacer()
+            // Manual refetch-from-source (port of the macOS Refresh button in
+            // PlayerControlCard). Shown only when a refresh is even possible —
+            // the machine's `canRefresh` rule, so the bar never offers a button
+            // that would just refuse. Taps are deliberately unbounded (the
+            // budget only caps *automatic* refetches); while one is in flight
+            // the button is a spinner, mirroring macOS.
+            if let stream, RefetchMachine.canRefresh(stream) {
+                Button {
+                    manager.player.refreshFromSource(stream, manual: true)
+                } label: {
+                    if manager.player.isRefreshing {
+                        ProgressView()
+                            .frame(width: 32, height: 32)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.title3)
+                            .frame(width: 32, height: 32)
+                    }
+                }
+                .disabled(manager.player.isRefreshing)
+                .accessibilityLabel(manager.player.isRefreshing ? "Refreshing" : "Refresh")
+                // Stable hook for RefetchUITests — never rename it.
+                .accessibilityIdentifier("refreshStreamButton")
+            }
             // Native system AirPlay route-picker button (no volume slider).
             AirPlayRoutePickerView(tint: UIColor.label)
                 .frame(width: 32, height: 32)
@@ -272,6 +306,15 @@ private struct PlayerBar: View {
     private var statusLine: String {
         if isAirPlaying {
             return "AirPlaying to external device"
+        }
+        // The failed bar must tell the truth, not "Playing": the stream is gone
+        // and statusText carries the real state ("Failed", "Open in browser").
+        if manager.player.isFailed {
+            return manager.player.statusText
+        }
+        // A manual refetch in flight is visible here too, next to the spinner.
+        if manager.player.isRefreshing {
+            return manager.player.statusText
         }
         return "Playing"
     }

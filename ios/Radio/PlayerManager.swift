@@ -14,6 +14,9 @@ final class PlayerManager: ObservableObject {
 
     /// True if a stream is currently playing (the single active player).
     var isPlaying: Bool { player.isPlaying }
+    /// True when the current stream played and died with its recovery budget
+    /// spent — the dock keeps the bar (with Refresh) visible for exactly this.
+    var isFailed: Bool { player.isFailed }
     var currentStream: Stream? { player.currentStream }
 
     /// StreamPlayer's own @Published changes (isPlaying, currentStream,
