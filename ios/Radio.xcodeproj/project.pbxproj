@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0805E8B9BCABC2466CC85374 /* AirPlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A605F49F29EC3611BE494C4 /* AirPlay.swift */; };
+		1A51BDB46F8C2EC2C60CD07F /* RefetchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482B8248BFCAAF94702A1F57 /* RefetchUITests.swift */; };
 		1BDCBB039F3E615ADF6408E8 /* VideoSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF86C2D279A6ABDE1ADD109 /* VideoSurface.swift */; };
 		2984625B6E427694FDE2AFB8 /* VideoSurfaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625A72E09F00952584CB45CF /* VideoSurfaceTests.swift */; };
 		2D53493039F67AF9B118B85D /* StreamPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */; };
@@ -61,6 +62,7 @@
 		2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurfaceUITests.swift; sourceTree = "<group>"; };
 		3592D7C48D94252502A6B816 /* StreamRefetch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamRefetch.swift; sourceTree = "<group>"; };
 		40EF9BC181449D85D7A566AB /* RadioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioApp.swift; sourceTree = "<group>"; };
+		482B8248BFCAAF94702A1F57 /* RefetchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefetchUITests.swift; sourceTree = "<group>"; };
 		4D087376958BC2DFA13D92BC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5E003833D145A418C5E884ED /* QRScanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanSession.swift; sourceTree = "<group>"; };
 		625A72E09F00952584CB45CF /* VideoSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurfaceTests.swift; sourceTree = "<group>"; };
@@ -124,6 +126,7 @@
 		AD277A98312B0F0E39BE6094 /* RadioUITests */ = {
 			isa = PBXGroup;
 			children = (
+				482B8248BFCAAF94702A1F57 /* RefetchUITests.swift */,
 				2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */,
 			);
 			path = RadioUITests;
@@ -263,6 +266,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A51BDB46F8C2EC2C60CD07F /* RefetchUITests.swift in Sources */,
 				E0510A33EB25027F345BD066 /* VideoSurfaceUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
