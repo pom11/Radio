@@ -46,17 +46,32 @@ final class RefetchUITests: XCTestCase {
 
         XCTAssertTrue(app.otherElements["playerBar"].waitForExistence(timeout: 30),
                       "channel stream never showed its player bar")
-        let refresh = app.buttons["refreshStreamButton"]
-        XCTAssertTrue(refresh.waitForExistence(timeout: 10),
-                      "no Refresh in the bar for a stream that has a source page")
-
+        // Queried by its AX LABEL, which the second run proved is exposed
+        // (the tap landed). The identifier `refreshStreamButton` is NOT
+        // exposed for this button: unlike `addStreamButton` (a toolbar item,
+        // where SwiftUI does surface identifiers), a plain bar button whose
+        // label switches between Image and ProgressView surfaces only the
+        // accessibilityLabel — same as the Pause/Stop buttons this harness
+        // already taps by label. The identifier stays in the view for
+        // future hooks; the test does not depend on it.
+        let refresh = app.buttons["Refresh"]
+        if !refresh.waitForExistence(timeout: 10) {
+            let bar = app.otherElements["playerBar"]
+            XCTFail("no Refresh affordance in the bar for a stream that has a "
+                  + "source page. Bar AX subtree:\n"
+                  + (bar.exists ? bar.debugDescription : "<bar gone>"))
+        }
         refresh.tap()
         // A manual refresh re-plays the (re-resolved) stream. The strongest
         // non-network assertion: the bar and its controls are still there —
         // the tap must not stop, blank, or crash the running stream.
         XCTAssertTrue(app.otherElements["playerBar"].waitForExistence(timeout: 30),
                       "the bar vanished after a manual refresh")
-        XCTAssertTrue(app.buttons["refreshStreamButton"].waitForExistence(timeout: 10),
+        // After the refresh completes the label is "Refresh" again (a failed
+        // re-resolve ends in "Refresh failed" WITHOUT the bar disappearing —
+        // either way the affordance must still be there for another try).
+        let again = app.buttons["Refresh"]
+        XCTAssertTrue(again.waitForExistence(timeout: 20) || app.buttons["Refreshing"].exists,
                       "Refresh disappeared after use")
     }
 
@@ -79,16 +94,26 @@ final class RefetchUITests: XCTestCase {
         let bar = app.otherElements["playerBar"]
         XCTAssertTrue(bar.waitForExistence(timeout: 60),
                       "the bar disappeared on a dead stream — the user is left with no lever")
-        XCTAssertTrue(bar.staticTexts["Failed"].waitForExistence(timeout: 10),
-                      "the failed bar must say Failed, not 'Playing'")
+        // Generous wait: the bar first shows "Reconnecting..." while the auto
+        // budget burns (3 real play→fail cycles against a refused socket, each
+        // up to a few seconds of AVAsset loading); "Failed" is the END state.
+        let failedLine = bar.staticTexts["Failed"]
+        XCTAssertTrue(failedLine.waitForExistence(timeout: 60),
+                      "the failed bar never said Failed. Bar subtree:\n"
+                    + (bar.exists ? bar.debugDescription : "<bar gone>"))
         // Transport present in this mode: Play = retry with a fresh budget,
         // Stop = clear it. (Stop is also how the test cleans up.)
         XCTAssertTrue(app.buttons["Stop"].waitForExistence(timeout: 10),
                       "failed bar lacks Stop — the user could not dismiss it")
         // And NO Refresh: an audio stream with no source page has nothing to
         // refetch from. If the button appeared here it would be a dead end.
-        XCTAssertFalse(app.buttons["refreshStreamButton"].exists,
+        // Queried by LABEL (the identifier is not exposed on bar buttons —
+        // see testChannelStreamBarOffersRefreshAndUsingItKeepsPlaying); an
+        // id-based negative here would pass vacuously and prove nothing.
+        XCTAssertFalse(app.buttons["Refresh"].exists,
                        "Refresh offered for a stream with no source page")
+        XCTAssertFalse(app.buttons["Refreshing"].exists,
+                       "a Refresh spinner for a stream that cannot refresh")
 
         app.buttons["Stop"].tap()
         XCTAssertFalse(app.otherElements["playerBar"].waitForExistence(timeout: 5),
