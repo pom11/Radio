@@ -1,3 +1,4 @@
+import MediaPlayer
 import XCTest
 @testable import Radio
 
@@ -12,7 +13,10 @@ import XCTest
 /// audio session, or a device.
 final class NowPlayingInfoTests: XCTestCase {
 
-    private func stream(_ name: String = "Radio Romania Actualitati", type: StreamType = .audio) -> Stream {
+    // `Radio.` prefix: in the test target a bare `Stream` is ambiguous with
+    // Foundation's `Stream` class (inside the app module its own declaration
+    // wins, which is why StreamPlayer/StreamStoreTests need no prefix).
+    private func stream(_ name: String = "Radio Romania Actualitati", type: StreamType = .audio) -> Radio.Stream {
         Stream(name: name, url: "https://example.com/live.m3u8", type: type)
     }
 
@@ -138,7 +142,7 @@ final class NowPlayingInfoTests: XCTestCase {
 
     // MARK: - Next / previous (the dial)
 
-    private var dial: [Stream] {
+    private var dial: [Radio.Stream] {
         [
             Stream(name: "One", url: "https://example.com/1.mp3"),
             Stream(name: "Two", url: "https://example.com/2.mp3"),
