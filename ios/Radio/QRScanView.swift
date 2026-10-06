@@ -60,6 +60,18 @@ struct QRScanView: View {
             }
         }
         .task { await resolveAuthorization() }
+        // Lifecycle is attached to the SCREEN, not to the scanner subtree:
+        // SwiftUI rebuilds that subtree repeatedly while presenting, and
+        // hanging begin/endScanning off it stopped the camera milliseconds
+        // after each start (visible in the device log as beginScanning /
+        // endScanning cycling with no metadata callback in between).
+        .onAppear {
+            scanSession.beginScanning { string in
+                onScan(string)
+                dismiss()
+            }
+        }
+        .onDisappear { scanSession.endScanning() }
     }
 
     @ViewBuilder
@@ -83,14 +95,7 @@ struct QRScanView: View {
 
     private var scanner: some View {
         QRScannerController(session: scanSession.session)
-            .onAppear {
-                scanSession.beginScanning { string in
-                    onScan(string)
-                    dismiss()
-                }
-            }
-            .onDisappear { scanSession.endScanning() }
-        .overlay(alignment: .bottom) {
+            .overlay(alignment: .bottom) {
             Text("Point the camera at the macOS QR code")
                 .font(.footnote)
                 .foregroundStyle(.white)

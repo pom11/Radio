@@ -42,7 +42,7 @@ final class QRScanSession: NSObject, ObservableObject {
     /// against the previous build. The version segment moves whenever this
     /// file's logging changes; the random segment differs per instance, so two
     /// concurrent sessions are now obvious at a glance.
-    private let tag: String = "qr/v4/" + String(UUID().uuidString.prefix(4))
+    private let tag: String = "qr/v5/" + String(UUID().uuidString.prefix(4))
     /// Set when no usable session could be built, so the UI can say so instead
     /// of showing a black rectangle.
     @Published private(set) var failed = false
@@ -64,10 +64,25 @@ final class QRScanSession: NSObject, ObservableObject {
     /// out from under the one still visible.
     private var viewers = 0
 
+    /// Pending debounced stop. SwiftUI tears the scanner subtree down and
+    /// rebuilds it repeatedly during presentation — the device log showed
+    /// beginScanning/endScanning cycling three times — and an immediate stop on
+    /// each disappear killed the camera a few milliseconds after it started, so
+    /// no frame was ever delivered. Stopping is therefore deferred, and a
+    /// beginScanning arriving in the meantime cancels it.
+    private var pendingStop: Task<Void, Never>?
+
     /// Begin a fresh scan. Resets the one-shot latch, because this object now
     /// outlives a single presentation: after one successful decode `didScan`
     /// would otherwise stay true and the scanner would never read again.
     func beginScanning(onScan: @escaping (String) -> Void) {
+        // Cancel a deferred stop from a teardown that is being immediately
+        // followed by this rebuild.
+        if pendingStop != nil {
+            pendingStop?.cancel()
+            pendingStop = nil
+            log.info("\(self.tag, privacy: .public) cancelled pending stop (rebuild, not a dismiss)")
+        }
         viewers += 1
         self.onScan = onScan
         // Reset the one-shot latch: this object outlives a single presentation,
@@ -77,11 +92,23 @@ final class QRScanSession: NSObject, ObservableObject {
         start()
     }
 
-    /// Counterpart to `beginScanning`. Only the last viewer stops the camera.
+    /// Counterpart to `beginScanning`. Only the last viewer stops the camera,
+    /// and even then not immediately: see `pendingStop`.
     func endScanning() {
         viewers = max(0, viewers - 1)
         log.info("\(self.tag, privacy: .public) endScanning (viewers \(self.viewers))")
-        if viewers == 0 { stop() }
+        guard viewers == 0 else { return }
+        pendingStop?.cancel()
+        pendingStop = Task { [weak self] in
+            // Long enough to outlast a SwiftUI rebuild, short enough that the
+            // camera indicator does not linger after a real dismiss.
+            try? await Task.sleep(for: .milliseconds(700))
+            guard !Task.isCancelled, let self else { return }
+            guard self.viewers == 0 else { return }
+            self.pendingStop = nil
+            log.info("\(self.tag, privacy: .public) deferred stop firing")
+            self.stop()
+        }
     }
 
     /// Idempotent: safe to call from every `onAppear`.
