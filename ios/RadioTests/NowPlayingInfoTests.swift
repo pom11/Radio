@@ -140,6 +140,32 @@ final class NowPlayingInfoTests: XCTestCase {
                           integer(video, MPMediaItemPropertyMediaType))
     }
 
+    // MARK: - Through the real system center
+
+    /// End-to-end through MPNowPlayingInfoCenter itself: the payload must be
+    /// ACCEPTED by the system (a malformed payload is silently dropped, which
+    /// looks identical to "no card" on the Lock Screen), and clear() must take
+    /// the card away rather than leaving a ghost entry. This also smoke-tests
+    /// NowPlayingController construction, i.e. the remote-command registration.
+    func testPublishAndClearRoundTripThroughTheSystemCenter() {
+        let controller = NowPlayingController()
+        defer { controller.clear() }
+
+        controller.publish(stream: stream("Kiss FM"), elapsedSeconds: 30, rate: 1, durationSeconds: nil)
+        let info = MPNowPlayingInfoCenter.default().nowPlayingInfo
+        XCTAssertNotNil(info, "the system rejected the payload — no card would show")
+        XCTAssertEqual(info?[MPMediaItemPropertyTitle] as? String, "Kiss FM")
+        XCTAssertEqual(MPNowPlayingInfoCenter.default().playbackState, .playing)
+
+        controller.publish(stream: stream("Kiss FM"), elapsedSeconds: 30, rate: 0, durationSeconds: nil)
+        XCTAssertEqual(MPNowPlayingInfoCenter.default().playbackState, .paused)
+
+        controller.clear()
+        XCTAssertNil(MPNowPlayingInfoCenter.default().nowPlayingInfo,
+                     "a stopped stream must not leave a card behind")
+        XCTAssertEqual(MPNowPlayingInfoCenter.default().playbackState, .stopped)
+    }
+
     // MARK: - Next / previous (the dial)
 
     private var dial: [Radio.Stream] {
