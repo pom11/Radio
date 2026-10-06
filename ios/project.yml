@@ -83,3 +83,41 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Radio.app/Radio"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  # UI-test target: the harness the "manual check on simulator" verification
+  # turned into. The video bug was undetectable from a unit test (audio played,
+  # the item reached readyToPlay, nothing was wrong except that no
+  # AVPlayerLayer existed in the process), so the check that catches it has to
+  # launch the app and look for the surface.
+  RadioUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: RadioUITests
+    dependencies:
+      - target: Radio
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Radio
+schemes:
+  # Schemes are declared instead of auto-generated so the two suites stay
+  # separately runnable. XcodeGen's default "Radio" scheme would fold
+  # RadioUITests into the same test action — those tests drive real playback
+  # over the network, so `xcodebuild test -scheme Radio` would then go red on a
+  # machine with no internet and blame the code. RadioUITests needs its own
+  # scheme (`RadioUI`) on purpose; run it explicitly when you want it.
+  Radio:
+    build:
+      targets:
+        Radio: all
+    test:
+      targets:
+        - RadioTests
+      gatherCoverageData: false
+  RadioUI:
+    build:
+      targets:
+        Radio: all
+    test:
+      targets:
+        - RadioUITests

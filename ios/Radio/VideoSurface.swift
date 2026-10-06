@@ -18,6 +18,11 @@ struct VideoSurface: UIViewRepresentable {
     /// shows plain black instead of a stale frame from the previous stream.
     let player: AVPlayer?
 
+    /// Label announced for the picture, and used by nothing else. Set on the
+    /// hosted view (not by the SwiftUI wrapper) so the view stays a single,
+    /// identifiable element in the accessibility tree.
+    var label: String = "Video"
+
     func makeUIView(context: Context) -> PlayerLayerUIView {
         // No configuration here on purpose: the layer and its gravity are set up
         // in PlayerLayerUIView's initialisers, so the invariant holds for any
@@ -29,6 +34,7 @@ struct VideoSurface: UIViewRepresentable {
         // Re-assigning the same player is a no-op for AVPlayerLayer, so this is
         // safe to call on every view update.
         uiView.playerLayer.player = player
+        uiView.accessibilityLabel = label
     }
 }
 
@@ -60,6 +66,13 @@ final class PlayerLayerUIView: UIView {
         // Opaque black behind the letterbox bars, so the panel never shows the
         // list scrolled behind it through a transparent layer.
         backgroundColor = .black
+        // The picture must be visible to XCUITest and VoiceOver: an AVPlayerLayer
+        // is not an accessibility element by default, so the panel is otherwise
+        // invisible to both. `videoSurface` is the hook VideoSurfaceUITests
+        // asserts on — stable identifier, never rename it.
+        isAccessibilityElement = true
+        accessibilityIdentifier = "videoSurface"
+        accessibilityLabel = "Video"
     }
 }
 

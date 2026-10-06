@@ -27,9 +27,8 @@ final class VideoSurfaceTests: XCTestCase {
         let view = PlayerLayerUIView()
         XCTAssertTrue(view.layer is AVPlayerLayer,
                       "layerClass must be AVPlayerLayer, otherwise no frames are ever rendered")
-        XCTAssertNotNil(view.playerLayer as? AVPlayerLayer)
         XCTAssertTrue(view.playerLayer === view.layer,
-                      "playerLayer must be the backing layer, not a detached sublayer")
+                      "playerLayer must BE the backing layer, not a detached sublayer")
     }
 
     /// `.resizeAspect` fits the frame without cropping. `.resizeAspectFill`

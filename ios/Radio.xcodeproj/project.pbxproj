@@ -25,6 +25,7 @@
 		B314ADA64824A7E12B7A77A5 /* QRScannerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE44FE6131A38B173B3C3171 /* QRScannerController.swift */; };
 		CA354657A65EC89C6616A869 /* ChannelResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E447DF05519267E103F32060 /* ChannelResolver.swift */; };
 		D1C76960E61FAAD876FA9F30 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */; };
+		E0510A33EB25027F345BD066 /* VideoSurfaceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */; };
 		E09FAC23719DBA0C042364BE /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD69118C654D6B3BE0F91293 /* CarPlaySceneDelegate.swift */; };
 		E0A277D42F1AC3A25DE863C4 /* QRScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E003833D145A418C5E884ED /* QRScanSession.swift */; };
 		EF0A208C02EE5D6021470EC6 /* StreamStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */; };
@@ -40,12 +41,20 @@
 			remoteGlobalIDString = 79879A702BFC1272555CBA2D;
 			remoteInfo = Radio;
 		};
+		E31890441E7EEF7607D864D8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DB2075DAB119E92CC077C64B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 79879A702BFC1272555CBA2D;
+			remoteInfo = Radio;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamStoreTests.swift; sourceTree = "<group>"; };
 		0F0D00042749667FA6407BCC /* NowPlaying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlaying.swift; sourceTree = "<group>"; };
 		107B7BFE2F9F012B5BF3EE97 /* Radio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Radio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurfaceUITests.swift; sourceTree = "<group>"; };
 		40EF9BC181449D85D7A566AB /* RadioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioApp.swift; sourceTree = "<group>"; };
 		4D087376958BC2DFA13D92BC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5E003833D145A418C5E884ED /* QRScanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanSession.swift; sourceTree = "<group>"; };
@@ -54,6 +63,7 @@
 		80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
 		81C0903AC6C3129100D7414E /* AddStreamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStreamSheet.swift; sourceTree = "<group>"; };
 		8A605F49F29EC3611BE494C4 /* AirPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlay.swift; sourceTree = "<group>"; };
+		901C24BADDC23DCE2E11D16C /* RadioUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RadioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9DF86C2D279A6ABDE1ADD109 /* VideoSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurface.swift; sourceTree = "<group>"; };
 		9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayAppDelegate.swift; sourceTree = "<group>"; };
 		A88A9F4D6D114C8D76572F9B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -77,6 +87,7 @@
 			children = (
 				B190F9DD9BD8E6C9681CB524 /* Radio */,
 				4E73B44FB6B6011D06A9DDEA /* RadioTests */,
+				AD277A98312B0F0E39BE6094 /* RadioUITests */,
 				4EF3F828190695C047D3B043 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -97,8 +108,17 @@
 			children = (
 				107B7BFE2F9F012B5BF3EE97 /* Radio.app */,
 				AAD561C99FFD3E29BC31393F /* RadioTests.xctest */,
+				901C24BADDC23DCE2E11D16C /* RadioUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		AD277A98312B0F0E39BE6094 /* RadioUITests */ = {
+			isa = PBXGroup;
+			children = (
+				2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */,
+			);
+			path = RadioUITests;
 			sourceTree = "<group>";
 		};
 		B190F9DD9BD8E6C9681CB524 /* Radio */ = {
@@ -131,6 +151,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		5D5420CFB26B86B301A6478B /* RadioUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5E90C3E76D73EB592EA91F48 /* Build configuration list for PBXNativeTarget "RadioUITests" */;
+			buildPhases = (
+				20EBFBA5009F3AC372316397 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5E1147198EA15A0E8381FCBF /* PBXTargetDependency */,
+			);
+			name = RadioUITests;
+			packageProductDependencies = (
+			);
+			productName = RadioUITests;
+			productReference = 901C24BADDC23DCE2E11D16C /* RadioUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		64BFB24FBDC5AB2A9F717512 /* RadioTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5B095B79AC581EBFADDC5793 /* Build configuration list for PBXNativeTarget "RadioTests" */;
@@ -175,6 +213,11 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					5D5420CFB26B86B301A6478B = {
+						DevelopmentTeam = RZ2G93W936;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 79879A702BFC1272555CBA2D;
+					};
 					64BFB24FBDC5AB2A9F717512 = {
 						DevelopmentTeam = RZ2G93W936;
 						ProvisioningStyle = Automatic;
@@ -201,11 +244,20 @@
 			targets = (
 				79879A702BFC1272555CBA2D /* Radio */,
 				64BFB24FBDC5AB2A9F717512 /* RadioTests */,
+				5D5420CFB26B86B301A6478B /* RadioUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		20EBFBA5009F3AC372316397 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E0510A33EB25027F345BD066 /* VideoSurfaceUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		69B6D622D3D1AB1F2C434E09 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -250,6 +302,11 @@
 			isa = PBXTargetDependency;
 			target = 79879A702BFC1272555CBA2D /* Radio */;
 			targetProxy = 41C4BA074B41E46F6A43E0EB /* PBXContainerItemProxy */;
+		};
+		5E1147198EA15A0E8381FCBF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 79879A702BFC1272555CBA2D /* Radio */;
+			targetProxy = E31890441E7EEF7607D864D8 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -432,6 +489,40 @@
 			};
 			name = Debug;
 		};
+		93FE7981FA6847277220BA69 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ro.pom.RadioUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Radio;
+			};
+			name = Debug;
+		};
+		AF016622DE9913C1FEF6D148 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ro.pom.RadioUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Radio;
+			};
+			name = Release;
+		};
 		FEC5C2BC64D06A95B5B891BB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -479,6 +570,15 @@
 			buildConfigurations = (
 				7D27A172464F31E5EF968B3D /* Debug */,
 				3CADF7B348A70E0D08E5831B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5E90C3E76D73EB592EA91F48 /* Build configuration list for PBXNativeTarget "RadioUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				93FE7981FA6847277220BA69 /* Debug */,
+				AF016622DE9913C1FEF6D148 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

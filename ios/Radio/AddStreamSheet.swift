@@ -15,10 +15,12 @@ struct AddStreamSheet: View {
             Form {
                 Section("Stream") {
                     TextField("Name (optional)", text: $name)
+                        .accessibilityIdentifier("addStreamNameField")
                     TextField("Stream URL", text: $url)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
+                        .accessibilityIdentifier("addStreamURLField")
                 }
                 Section("Type") {
                     Picker("Type", selection: $type) {

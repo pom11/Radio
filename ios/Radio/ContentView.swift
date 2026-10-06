@@ -56,6 +56,9 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    // Stable hook for the UI test that drives add → play →
+                    // picture; never localize or rename it.
+                    .accessibilityIdentifier("addStreamButton")
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -247,6 +250,10 @@ private struct PlayerBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.bar)
+        // Stable hook: the audio-path test asserts THIS is up (playback really
+        // started) while no video panel is — a bar it can see rather than an
+        // internal flag.
+        .accessibilityIdentifier("playerBar")
     }
 
     private var statusLine: String {
@@ -270,14 +277,11 @@ private struct VideoPanel: View {
     @ObservedObject var manager: PlayerManager
 
     var body: some View {
-        VideoSurface(player: manager.player.avPlayer)
+        VideoSurface(player: manager.player.avPlayer,
+                     label: "Video for \(manager.currentStream?.name ?? "stream")")
             .aspectRatio(VideoSurfacePolicy.aspectRatio, contentMode: .fit)
             .frame(maxWidth: .infinity)
             .background(Color.black)
-            .accessibilityElement()
-            // Without a label this is an unlabeled element in the a11y tree,
-            // which is worse than useless to VoiceOver.
-            .accessibilityLabel("Video for \(manager.currentStream?.name ?? "stream")")
     }
 }
 
