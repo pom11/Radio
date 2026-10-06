@@ -55,8 +55,7 @@ final class VideoSurfaceUITests: XCTestCase {
                           "surface reaches the bottom edge — the player bar would be unreachable")
 
         // The card's other requirement: transport stays reachable AND works
-        // while video is on screen. Pause, resume and stop all have to keep the
-        // picture and the bar in step.
+        // while video is on screen.
         let pause = app.buttons["Pause"]
         XCTAssertTrue(pause.waitForExistence(timeout: 10),
                       "player bar lost its pause control while video is showing")
@@ -68,9 +67,17 @@ final class VideoSurfaceUITests: XCTestCase {
         XCTAssertTrue(app.otherElements["videoSurface"].exists,
                       "the picture disappeared on pause — only the audio should stop")
 
-        // Stop (tapping the playing row again) must take the picture away: a
-        // black panel for a stream that is gone is the ghost-card bug in UI form.
-        play(name: name)
+        // Resume from the bar.
+        app.buttons["Play"].tap()
+        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 10),
+                      "resume from the bar did not flip the button back")
+
+        // Stop = the bar's own Stop button. It has to be THERE because the
+        // docked panel can cover the row that started playback (a previous
+        // version of this test tapped the row and failed: XCUITest reported the
+        // row "not hittable" under the panel). A black panel for a stream that
+        // is gone would be the ghost-card bug in UI form.
+        app.buttons["Stop"].tap()
         XCTAssertFalse(app.otherElements["videoSurface"].waitForExistence(timeout: 5),
                        "the picture survived stop — a black rectangle for nothing")
     }
@@ -150,19 +157,32 @@ final class VideoSurfaceUITests: XCTestCase {
         app.buttons[type].tap()          // segmented picker: Audio / Video / Channel
         app.buttons["Save"].tap()
 
-        // The sheet is gone once the list is back. Asserting on the row that was
-        // just added (rather than "a sheet is gone") also proves Save took.
-        XCTAssertTrue(app.collectionViews.cells.staticTexts[name]
-                        .waitForExistence(timeout: 20), "sheet never dismissed / row missing")
+        // The sheet is gone when its field is. Asserting on the row here would
+        // depend on the list having room to render it (see `play(name:)`).
+        XCTAssertFalse(app.textFields["addStreamURLField"].waitForExistence(timeout: 5),
+                       "sheet never dismissed")
         return name
     }
 
-    /// Tap the row for this stream (its name is a StaticText in the cell) to
-    /// start playback.
+    /// Scroll until this stream's row is on screen, then tap it to start playback.
+    ///
+    /// The store persists across launches, so a stream added by an earlier run
+    /// can be far below the fold — and a SwiftUI collection only renders visible
+    /// cells, so `exists` is false for anything off screen (an earlier version of
+    /// this helper asserted the row was there right after Save and went red once
+    /// the simulator had accumulated a screenful of rows). Scrolling is also what
+    /// a user does.
     private func play(name: String) {
-        let row = app.collectionViews.cells.staticTexts[name]
-        XCTAssertTrue(row.waitForExistence(timeout: 15), "stream row \(name) never appeared")
-        row.tap()
+        let collection = app.collectionViews.firstMatch
+        let row = collection.cells.staticTexts[name]
+        for _ in 0..<20 {
+            if row.isHittable {
+                row.tap()
+                return
+            }
+            collection.swipeUp()
+        }
+        XCTAssertTrue(row.isHittable, "stream row \(name) never scrolled into view")
     }
 
     private func requireNetwork() throws {
