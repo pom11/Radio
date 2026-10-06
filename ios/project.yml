@@ -30,8 +30,10 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        # NOTE: orientations are declared in Radio/Info.plist (the explicit
-        # Info.plist wins over INFOPLIST_KEY_* — no key here on purpose).
+        # NOTE: orientations are NOT declared as INFOPLIST_KEY_* here. They live
+        # in `info.properties` below, which xcodegen writes into
+        # Radio/Info.plist (the explicit Info.plist wins over INFOPLIST_KEY_* —
+        # no key here on purpose).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_EMIT_LOC_STRINGS: YES
@@ -48,11 +50,16 @@ targets:
         # validation requires ALL orientations "unless the app requires full
         # screen" — UIRequiresFullScreen=YES declares that exemption, so
         # portrait-only is accepted (this is the CarPlay-audio app shape too).
+        # These keys are the SOURCE OF TRUTH: xcodegen generates Radio/Info.plist
+        # from them, so they must be edited here and never hand-written into the
+        # plist (a regenerate would silently wipe a direct plist edit).
         UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
   RadioTests:
     type: bundle.unit-test
     platform: iOS
