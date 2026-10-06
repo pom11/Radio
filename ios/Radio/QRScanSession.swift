@@ -16,9 +16,10 @@ private let log = Logger(subsystem: "ro.pom.radio.ios", category: "qr")
 /// ever fired: two sessions contend for one device and the loser is interrupted,
 /// so the preview looks alive while nothing decodes.
 ///
-/// Held by `QRScanView` as a `@StateObject`, which is created once per view
-/// lifetime, so exactly one session exists no matter how often the body is
-/// re-evaluated. The representable below it only attaches a preview layer.
+/// Exposed as `QRScanSession.shared` and observed by `QRScanView`, so exactly
+/// one session exists no matter how many times SwiftUI builds the view or
+/// re-evaluates its body. The representable below it only attaches a preview
+/// layer and owns nothing.
 @MainActor
 final class QRScanSession: NSObject, ObservableObject {
     /// PROCESS-WIDE single instance.
