@@ -108,12 +108,19 @@ private struct QRCard: View {
 
             Group {
                 if let image {
+                    // .resizable() is REQUIRED: without it a SwiftUI Image
+                    // ignores .frame() for scaling and draws at its native
+                    // size (CIQRCodeGenerator at scale 10 is 350-550px), so the
+                    // code was clipped by the sheet and could not be decoded at
+                    // all. .interpolation(.none) keeps the modules crisp under
+                    // nearest-neighbour scaling.
                     Image(nsImage: image)
+                        .resizable()
                         .interpolation(.none)
-                        .frame(width: 200, height: 200)
+                        .frame(width: QRDisplay.side, height: QRDisplay.side)
                 } else {
                     ProgressView()
-                        .frame(width: 200, height: 200)
+                        .frame(width: QRDisplay.side, height: QRDisplay.side)
                 }
             }
 

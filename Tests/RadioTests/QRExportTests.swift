@@ -86,4 +86,69 @@ final class QRExportTests: XCTestCase {
         let decoded = QRScanner.decode(image)
         XCTAssertEqual(decoded, link, "scan-back must reproduce the exact payload")
     }
+
+    // MARK: - Display size (regression: the sheet showed a CLIPPED code)
+
+    /// A QR must still decode after being scaled to the size it is DISPLAYED
+    /// at, and must NOT be relied on when cropped.
+    ///
+    /// The export sheet rendered the image with `.frame(...)` and no
+    /// `.resizable()`, so the ~350-550px code drew at native size and was
+    /// clipped by the 460pt sheet. Measured: a correctly scaled code decodes at
+    /// 200/240/300pt, while the same code cropped to 200pt does NOT decode at
+    /// all — which is why the iOS scanner reported a running session and zero
+    /// metadata objects. This pins both halves.
+    func testQRDecodesAtDisplaySize() throws {
+        let link = StreamDeepLink.addLink(
+            url: "https://stream.example.com/live/station128.aac?token=abc123",
+            name: "Radio România Actualități",
+            type: "audio",
+            pageUrl: "https://www.example.com/live/",
+            referer: nil)
+        let native = try XCTUnwrap(QRCodeGenerator.qrImage(from: link))
+        XCTAssertEqual(QRScanner.decode(native), link, "native-size QR must decode")
+
+        let shown = Self.redraw(native, side: QRDisplay.side)
+        XCTAssertEqual(QRScanner.decode(shown), link,
+                       "QR must survive scaling to its on-screen size (\(QRDisplay.side)pt)")
+    }
+
+    func testCroppedQRDoesNotDecode() throws {
+        // Guards the DIAGNOSIS, not the fix: if a cropped code ever became
+        // decodable this test failing would tell us the reasoning above no
+        // longer holds.
+        let link = StreamDeepLink.addLink(
+            url: "https://stream.example.com/live/station128.aac?token=abc123",
+            name: "Radio România Actualități",
+            type: "audio",
+            pageUrl: "https://www.example.com/live/",
+            referer: nil)
+        let native = try XCTUnwrap(QRCodeGenerator.qrImage(from: link))
+        let clipped = Self.crop(native, side: QRDisplay.side)
+        XCTAssertNil(QRScanner.decode(clipped),
+                     "a clipped QR is not decodable — that was the bug")
+    }
+
+    /// Scale by redrawing, as SwiftUI does for a `.resizable()` image.
+    private static func redraw(_ image: NSImage, side: CGFloat) -> NSImage {
+        let out = NSImage(size: NSSize(width: side, height: side))
+        out.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .none
+        image.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+        out.unlockFocus()
+        return out
+    }
+
+    /// Clip to `side`, as a non-resizable image in a smaller frame ends up.
+    private static func crop(_ image: NSImage, side: CGFloat) -> NSImage {
+        let out = NSImage(size: NSSize(width: side, height: side))
+        out.lockFocus()
+        NSColor.white.setFill()
+        NSRect(x: 0, y: 0, width: side, height: side).fill()
+        image.draw(in: NSRect(x: 0, y: image.size.height - side,
+                              width: image.size.width, height: image.size.height),
+                   from: .zero, operation: .sourceOver, fraction: 1)
+        out.unlockFocus()
+        return out
+    }
 }

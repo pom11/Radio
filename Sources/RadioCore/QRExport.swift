@@ -60,6 +60,23 @@ public enum QRCodeGenerator {
     }
 }
 
+// MARK: - Display sizing
+
+/// On-screen geometry for a rendered QR, shared by the export sheet and the
+/// test that proves a code still decodes at this size.
+///
+/// This exists because the sheet displayed the image with `.frame(...)` but
+/// WITHOUT `.resizable()`. A SwiftUI `Image` is not resizable by default, so the
+/// frame did not scale it — the ~350-550px QR drew at native size and was
+/// clipped by the sheet. A partially visible QR has no complete finder
+/// patterns and cannot be decoded by anything, which is why the iOS scanner
+/// ran a healthy session and never reported a single metadata object.
+public enum QRDisplay {
+    /// Side, in points, of the QR shown on a card. Verified decodable at this
+    /// size by `testQRDecodesAtDisplaySize`.
+    public static let side: CGFloat = 240
+}
+
 // MARK: - Scan-back decoder
 
 /// Decodes the payload of a QR image with CoreImage CIDetector. Used to prove
