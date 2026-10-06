@@ -13,6 +13,7 @@
 		2D53493039F67AF9B118B85D /* StreamPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */; };
 		2EC04D7A9E768A111573A775 /* QRScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD67A18C9CEECA7A26393D60 /* QRScanView.swift */; };
 		733D5B9F996166A6998899CC /* SafariView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB6510B8D15525CB33A105A8 /* SafariView.swift */; };
+		7C18F643D96B402089DA33F6 /* StreamRefetch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3592D7C48D94252502A6B816 /* StreamRefetch.swift */; };
 		8A2AC394B0DEFD8D18486859 /* RadioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40EF9BC181449D85D7A566AB /* RadioApp.swift */; };
 		8F995DD7123657236DB3B8F0 /* AddStreamSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C0903AC6C3129100D7414E /* AddStreamSheet.swift */; };
 		9673A13FE3EA3AD04075CAE4 /* PlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6667DFCFD315B9842A8F446E /* PlayerManager.swift */; };
@@ -24,6 +25,7 @@
 		B1FA0D274BB99EEE5A1E5D84 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F0D00042749667FA6407BCC /* NowPlaying.swift */; };
 		B314ADA64824A7E12B7A77A5 /* QRScannerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE44FE6131A38B173B3C3171 /* QRScannerController.swift */; };
 		CA354657A65EC89C6616A869 /* ChannelResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E447DF05519267E103F32060 /* ChannelResolver.swift */; };
+		CB1F2DF984872BF1CB5D4F67 /* RefetchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D428B0BE49705EF792261A4D /* RefetchTests.swift */; };
 		D1C76960E61FAAD876FA9F30 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */; };
 		E0510A33EB25027F345BD066 /* VideoSurfaceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */; };
 		E09FAC23719DBA0C042364BE /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD69118C654D6B3BE0F91293 /* CarPlaySceneDelegate.swift */; };
@@ -55,6 +57,7 @@
 		0F0D00042749667FA6407BCC /* NowPlaying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlaying.swift; sourceTree = "<group>"; };
 		107B7BFE2F9F012B5BF3EE97 /* Radio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Radio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurfaceUITests.swift; sourceTree = "<group>"; };
+		3592D7C48D94252502A6B816 /* StreamRefetch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamRefetch.swift; sourceTree = "<group>"; };
 		40EF9BC181449D85D7A566AB /* RadioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioApp.swift; sourceTree = "<group>"; };
 		4D087376958BC2DFA13D92BC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5E003833D145A418C5E884ED /* QRScanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanSession.swift; sourceTree = "<group>"; };
@@ -75,6 +78,7 @@
 		BD67A18C9CEECA7A26393D60 /* QRScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanView.swift; sourceTree = "<group>"; };
 		C766C15FBAA661D54E2AB439 /* Stream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stream.swift; sourceTree = "<group>"; };
 		CB6510B8D15525CB33A105A8 /* SafariView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariView.swift; sourceTree = "<group>"; };
+		D428B0BE49705EF792261A4D /* RefetchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefetchTests.swift; sourceTree = "<group>"; };
 		E447DF05519267E103F32060 /* ChannelResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelResolver.swift; sourceTree = "<group>"; };
 		E52ED8115F84C1DE229FC06C /* StreamStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamStore.swift; sourceTree = "<group>"; };
 		F8E7E43CE638D6A78A5CFD73 /* URLResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLResolver.swift; sourceTree = "<group>"; };
@@ -97,6 +101,7 @@
 			children = (
 				AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */,
 				B6197E8786DD7C1FA4375EBF /* NowPlayingInfoTests.swift */,
+				D428B0BE49705EF792261A4D /* RefetchTests.swift */,
 				0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */,
 				625A72E09F00952584CB45CF /* VideoSurfaceTests.swift */,
 			);
@@ -141,6 +146,7 @@
 				CB6510B8D15525CB33A105A8 /* SafariView.swift */,
 				C766C15FBAA661D54E2AB439 /* Stream.swift */,
 				B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */,
+				3592D7C48D94252502A6B816 /* StreamRefetch.swift */,
 				E52ED8115F84C1DE229FC06C /* StreamStore.swift */,
 				F8E7E43CE638D6A78A5CFD73 /* URLResolver.swift */,
 				9DF86C2D279A6ABDE1ADD109 /* VideoSurface.swift */,
@@ -278,6 +284,7 @@
 				733D5B9F996166A6998899CC /* SafariView.swift in Sources */,
 				AF2FEEA4A8EF04B2A418EC17 /* Stream.swift in Sources */,
 				2D53493039F67AF9B118B85D /* StreamPlayer.swift in Sources */,
+				7C18F643D96B402089DA33F6 /* StreamRefetch.swift in Sources */,
 				A75A9B7DC7CF1EE6A5BF0CC8 /* StreamStore.swift in Sources */,
 				98D30DE33D0D4718FBD0D8D3 /* URLResolver.swift in Sources */,
 				1BDCBB039F3E615ADF6408E8 /* VideoSurface.swift in Sources */,
@@ -290,6 +297,7 @@
 			files = (
 				AF2C6A2A82C006045F7EBFEE /* ChannelResolverTests.swift in Sources */,
 				F84A0C7ED00E7D05B13E378C /* NowPlayingInfoTests.swift in Sources */,
+				CB1F2DF984872BF1CB5D4F67 /* RefetchTests.swift in Sources */,
 				EF0A208C02EE5D6021470EC6 /* StreamStoreTests.swift in Sources */,
 				2984625B6E427694FDE2AFB8 /* VideoSurfaceTests.swift in Sources */,
 			);
