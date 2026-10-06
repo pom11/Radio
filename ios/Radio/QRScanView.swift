@@ -10,65 +10,138 @@ struct QRScanView: View {
     var onScan: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var permissionDenied = false
+
+    /// Camera authorization is a THREE-state problem, not a bool.
+    ///
+    /// This used to be `@State private var permissionDenied = false`, which
+    /// meant the scanner was built on the very first render — BEFORE `.onAppear`
+    /// had even asked for permission. AVFoundation will happily create and
+    /// start a session without authorization, but it delivers no frames: the
+    /// user got a black preview that could never decode a code, and granting
+    /// access afterwards did not rebuild the session, so it stayed dead until
+    /// the screen was left and re-entered. With the screen also having no way
+    /// out (see the toolbar below) that was unrecoverable.
+    ///
+    /// Gating on `.authorized` means the scanner is only created once the
+    /// camera can actually produce frames, and flipping to `.authorized`
+    /// rebuilds it for free.
+    private enum Authorization {
+        case undetermined, authorized, denied
+    }
+
+    @State private var authorization: Authorization = .undetermined
+    @State private var setupFailed = false
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            if permissionDenied {
-                VStack(spacing: 12) {
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 44))
-                    Text("Camera access is required to scan a QR code.")
-                        .font(.headline)
-                    Text("Enable it in Settings to import streams from the macOS QR export.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                    Button("Open Settings") {
-                        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(settingsURL)
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .foregroundStyle(.white)
-            } else {
-                QRScannerController { string in
-                    onScan(string)
-                    dismiss()
-                }
-                .overlay(alignment: .bottom) {
-                    Text("Point the camera at the macOS QR code")
-                        .font(.footnote)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color.black.opacity(0.5), in: Capsule())
-                        .padding(.bottom, 24)
+        // A NavigationStack is REQUIRED here: this view is presented with
+        // .fullScreenCover, which provides no navigation bar of its own, so the
+        // title and toolbar below previously rendered nowhere — leaving the
+        // camera with no Cancel button and no way back except a successful scan.
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                content
+            }
+            .navigationTitle("Scan QR")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .accessibilityLabel("Close scanner")
                 }
             }
         }
-        .navigationTitle("Scan QR")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .onAppear { requestPermission() }
+        .task { await resolveAuthorization() }
     }
 
-    private func requestPermission() {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
+    @ViewBuilder
+    private var content: some View {
+        switch authorization {
+        case .undetermined:
+            // Brief, and deliberately not the camera UI: showing a preview
+            // before authorization is what produced the dead black screen.
+            ProgressView()
+                .tint(.white)
+        case .denied:
+            permissionDeniedView
         case .authorized:
-            permissionDenied = false
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { granted in
-                DispatchQueue.main.async {
-                    permissionDenied = !granted
+            if setupFailed {
+                cameraUnavailableView
+            } else {
+                scanner
+            }
+        }
+    }
+
+    private var scanner: some View {
+        QRScannerController(
+            onScan: { string in
+                onScan(string)
+                dismiss()
+            },
+            onSetupFailure: { setupFailed = true }
+        )
+        .overlay(alignment: .bottom) {
+            Text("Point the camera at the macOS QR code")
+                .font(.footnote)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.black.opacity(0.5), in: Capsule())
+                .padding(.bottom, 24)
+        }
+    }
+
+    private var permissionDeniedView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "camera.fill")
+                .font(.system(size: 44))
+            Text("Camera access is required to scan a QR code.")
+                .font(.headline)
+            Text("Enable it in Settings to import streams from the macOS QR export.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Button("Open Settings") {
+                if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(settingsURL)
                 }
             }
+            .buttonStyle(.borderedProminent)
+        }
+        .foregroundStyle(.white)
+    }
+
+    /// Distinct from the permission case on purpose: a missing/unusable capture
+    /// device used to fail silently, which looked identical to a denied
+    /// permission and left nothing to act on.
+    private var cameraUnavailableView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 44))
+            Text("Camera unavailable")
+                .font(.headline)
+            Text("This device's camera could not be started. Add the stream manually with the + button instead.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .foregroundStyle(.white)
+    }
+
+    private func resolveAuthorization() async {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            authorization = .authorized
+        case .notDetermined:
+            // Await the prompt, so the scanner below is only built afterwards.
+            authorization = await AVCaptureDevice.requestAccess(for: .video)
+                ? .authorized : .denied
         default:
-            permissionDenied = true
+            authorization = .denied
         }
     }
 }
