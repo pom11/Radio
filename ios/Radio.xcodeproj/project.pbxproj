@@ -14,7 +14,6 @@
 		8A2AC394B0DEFD8D18486859 /* RadioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40EF9BC181449D85D7A566AB /* RadioApp.swift */; };
 		8F995DD7123657236DB3B8F0 /* AddStreamSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C0903AC6C3129100D7414E /* AddStreamSheet.swift */; };
 		9673A13FE3EA3AD04075CAE4 /* PlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6667DFCFD315B9842A8F446E /* PlayerManager.swift */; };
-		97110A627718C62D71A98B09 /* QRScannerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6B0223DD2BB2676FA440437 /* QRScannerViewController.swift */; };
 		98D30DE33D0D4718FBD0D8D3 /* URLResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E7E43CE638D6A78A5CFD73 /* URLResolver.swift */; };
 		A2E26CD0612A8BEF44A9470F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D087376958BC2DFA13D92BC /* ContentView.swift */; };
 		A75A9B7DC7CF1EE6A5BF0CC8 /* StreamStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52ED8115F84C1DE229FC06C /* StreamStore.swift */; };
@@ -24,6 +23,7 @@
 		CA354657A65EC89C6616A869 /* ChannelResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E447DF05519267E103F32060 /* ChannelResolver.swift */; };
 		D1C76960E61FAAD876FA9F30 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */; };
 		E09FAC23719DBA0C042364BE /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD69118C654D6B3BE0F91293 /* CarPlaySceneDelegate.swift */; };
+		E0A277D42F1AC3A25DE863C4 /* QRScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E003833D145A418C5E884ED /* QRScanSession.swift */; };
 		EF0A208C02EE5D6021470EC6 /* StreamStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */; };
 		FB07E31546D548B242D8C5B6 /* CarPlayAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */; };
 /* End PBXBuildFile section */
@@ -43,6 +43,7 @@
 		107B7BFE2F9F012B5BF3EE97 /* Radio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Radio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		40EF9BC181449D85D7A566AB /* RadioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioApp.swift; sourceTree = "<group>"; };
 		4D087376958BC2DFA13D92BC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5E003833D145A418C5E884ED /* QRScanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanSession.swift; sourceTree = "<group>"; };
 		6667DFCFD315B9842A8F446E /* PlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerManager.swift; sourceTree = "<group>"; };
 		80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
 		81C0903AC6C3129100D7414E /* AddStreamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStreamSheet.swift; sourceTree = "<group>"; };
@@ -53,7 +54,6 @@
 		AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelResolverTests.swift; sourceTree = "<group>"; };
 		AE44FE6131A38B173B3C3171 /* QRScannerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerController.swift; sourceTree = "<group>"; };
 		B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamPlayer.swift; sourceTree = "<group>"; };
-		B6B0223DD2BB2676FA440437 /* QRScannerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerViewController.swift; sourceTree = "<group>"; };
 		BD67A18C9CEECA7A26393D60 /* QRScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanView.swift; sourceTree = "<group>"; };
 		C766C15FBAA661D54E2AB439 /* Stream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stream.swift; sourceTree = "<group>"; };
 		CB6510B8D15525CB33A105A8 /* SafariView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariView.swift; sourceTree = "<group>"; };
@@ -104,7 +104,7 @@
 				A88A9F4D6D114C8D76572F9B /* Info.plist */,
 				6667DFCFD315B9842A8F446E /* PlayerManager.swift */,
 				AE44FE6131A38B173B3C3171 /* QRScannerController.swift */,
-				B6B0223DD2BB2676FA440437 /* QRScannerViewController.swift */,
+				5E003833D145A418C5E884ED /* QRScanSession.swift */,
 				BD67A18C9CEECA7A26393D60 /* QRScanView.swift */,
 				40EF9BC181449D85D7A566AB /* RadioApp.swift */,
 				CB6510B8D15525CB33A105A8 /* SafariView.swift */,
@@ -206,9 +206,9 @@
 				A2E26CD0612A8BEF44A9470F /* ContentView.swift in Sources */,
 				D1C76960E61FAAD876FA9F30 /* DeepLinkHandler.swift in Sources */,
 				9673A13FE3EA3AD04075CAE4 /* PlayerManager.swift in Sources */,
+				E0A277D42F1AC3A25DE863C4 /* QRScanSession.swift in Sources */,
 				2EC04D7A9E768A111573A775 /* QRScanView.swift in Sources */,
 				B314ADA64824A7E12B7A77A5 /* QRScannerController.swift in Sources */,
-				97110A627718C62D71A98B09 /* QRScannerViewController.swift in Sources */,
 				8A2AC394B0DEFD8D18486859 /* RadioApp.swift in Sources */,
 				733D5B9F996166A6998899CC /* SafariView.swift in Sources */,
 				AF2FEEA4A8EF04B2A418EC17 /* Stream.swift in Sources */,

@@ -30,7 +30,12 @@ struct QRScanView: View {
     }
 
     @State private var authorization: Authorization = .undetermined
-    @State private var setupFailed = false
+
+    /// The capture session is owned HERE, not inside the representable.
+    /// `@StateObject` is created once per view lifetime, so re-evaluating the
+    /// body cannot produce a second session on the same camera — which is what
+    /// made the preview look alive while no metadata callback ever fired.
+    @StateObject private var scanSession = QRScanSession()
 
     var body: some View {
         // A NavigationStack is REQUIRED here: this view is presented with
@@ -66,7 +71,7 @@ struct QRScanView: View {
         case .denied:
             permissionDeniedView
         case .authorized:
-            if setupFailed {
+            if scanSession.failed {
                 cameraUnavailableView
             } else {
                 scanner
@@ -75,13 +80,15 @@ struct QRScanView: View {
     }
 
     private var scanner: some View {
-        QRScannerController(
-            onScan: { string in
-                onScan(string)
-                dismiss()
-            },
-            onSetupFailure: { setupFailed = true }
-        )
+        QRScannerController(session: scanSession.session)
+            .onAppear {
+                scanSession.onScan = { string in
+                    onScan(string)
+                    dismiss()
+                }
+                scanSession.start()      // idempotent
+            }
+            .onDisappear { scanSession.stop() }
         .overlay(alignment: .bottom) {
             Text("Point the camera at the macOS QR code")
                 .font(.footnote)
