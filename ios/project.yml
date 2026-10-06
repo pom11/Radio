@@ -8,9 +8,12 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-    DEVELOPMENT_TEAM: ""
+    # Real team + automatic signing: an unsigned executable cannot launch on a
+    # DEVICE ("The executable is not codesigned",
+    # LaunchExecutableValidationErrorDomain 1). CODE_SIGNING_ALLOWED was "NO"
+    # here, which worked on the simulator and failed on hardware.
+    DEVELOPMENT_TEAM: "RZ2G93W936"
     CODE_SIGN_STYLE: Automatic
-    CODE_SIGNING_ALLOWED: "NO"
 targets:
   Radio:
     type: application
@@ -20,12 +23,14 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ro.pom.radio.ios
-        # CarPlay audio entitlement (provisioning-profile-bound; see
-        # Radio/Radio.entitlements). With CODE_SIGNING_ALLOWED=NO the unsigned
-        # base build ignores this and still launches — the entitlement only takes
-        # effect once a profile that carries `com.apple.developer.carplay-audio`
-        # is used at signing time.
-        CODE_SIGN_ENTITLEMENTS: Radio/Radio.entitlements
+        # NO entitlements file on purpose. The only key it carried was
+        # com.apple.developer.carplay-audio, and CarPlay entitlements are NOT a
+        # capability you can enable for an App ID — Apple grants them on request
+        # (developer.apple.com/contact/carplay, category "Audio apps"). Until
+        # granted, the key cannot be added to any provisioning profile, so the
+        # build failed with "Entitlement com.apple.developer.carplay-audio not
+        # found and could not be included in profile". Do not re-add it before
+        # the request is approved; see Radio/CarPlaySceneDelegate.swift.
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
@@ -54,6 +59,12 @@ targets:
         # from them, so they must be edited here and never hand-written into the
         # plist (a regenerate would silently wipe a direct plist edit).
         UIRequiresFullScreen: true
+        # Background audio: without this the stream stops the moment the app
+        # leaves the foreground. It is also what makes the app controllable from
+        # a car head unit via MPNowPlayingInfoCenter/MPRemoteCommandCenter while
+        # the CarPlay entitlement is still unapproved.
+        UIBackgroundModes:
+          - audio
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
