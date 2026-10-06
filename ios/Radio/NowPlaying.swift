@@ -128,10 +128,10 @@ final class NowPlayingController {
     weak var delegate: NowPlayingCommandDelegate?
 
     private let center = MPRemoteCommandCenter.shared()
-    /// (command, opaque target token) pairs returned by `addTargetWithHandler`.
+    /// (command, opaque target token) pairs returned by `addTarget(handler:)`.
     /// The token is what `removeTarget(_:)` expects — the block-based API does
     /// not register `self` as the target — so keeping the tokens is what makes
-    /// teardown possible (and keeps the blocks alive while registered).
+    /// teardown possible (and keeps the handlers registered while we hold them).
     private var registered: [(MPRemoteCommand, Any)] = []
 
     init() {
@@ -167,9 +167,12 @@ final class NowPlayingController {
         )
         let nowPlaying = MPNowPlayingInfoCenter.default()
         nowPlaying.nowPlayingInfo = info
-        // Also set the explicit playback state: CarPlay's now-playing template
-        // (and a few other surfaces) read this rather than deriving it from the
-        // rate. Same call site, so the two can never disagree.
+        // Also set the explicit playback state. MPNowPlayingInfoCenter.h says
+        // it "only applies on macOS, where playback state cannot be determined
+        // by the application's audio session" — on iOS the surfaces derive the
+        // glyph from PlaybackRate above. Setting it anyway costs nothing, keeps
+        // a Mac/Catalyst build of this target correct, and stops the two
+        // representations ever disagreeing (same call site).
         nowPlaying.playbackState = playing ? .playing : .paused
     }
 
