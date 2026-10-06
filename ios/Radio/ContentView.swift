@@ -143,13 +143,14 @@ struct ContentView: View {
 
     /// Bottom of the screen: the picture (only for a `.video` stream) docked
     /// directly above the player bar, so transport stays reachable while a
-    /// video plays (card requirement). For an `.audio` stream this is exactly
-    /// the player bar it always was — the video branch cannot be entered
-    /// without `stream.type == .video`.
+    /// video plays (card requirement — and the panel can cover the row that
+    /// started playback, so the bar itself carries Pause AND Stop in that mode).
+    /// For an `.audio` stream this is exactly the player bar it always was; the
+    /// video branch cannot be entered without `stream.type == .video`.
     ///
     /// Docked rather than a modal sheet: a sheet would cover the list, so the
-    /// user could not stop the stream or switch to another one without
-    /// dismissing the video first.
+    /// user could not switch to another stream without dismissing the video
+    /// first.
     @ViewBuilder
     private var bottomDock: some View {
         VStack(spacing: 0) {
@@ -205,11 +206,11 @@ struct ContentView: View {
 /// picker, and an "AirPlaying" indicator when routing externally.
 private struct PlayerBar: View {
     @ObservedObject var manager: PlayerManager
-    /// Whether to show the transport button. True only while the video panel is
-    /// on screen: the audio-only bar has always been name + AirPlay only (stop
-    /// lives on the row), and this card's rule is that pause stays reachable
-    /// *while video is shown*. Keeping the flag off for `.audio` means the
-    /// audio bar is literally unchanged.
+    /// Whether to show the transport controls (play/pause + stop). True only
+    /// while the video panel is on screen: the audio-only bar has always been
+    /// name + AirPlay only (stop lived on the row), and this card's rule is that
+    /// pause AND stop stay reachable *while video is shown*. Keeping the flag
+    /// off for `.audio` means the audio bar is literally unchanged.
     var showsTransport: Bool = false
 
     private var stream: Stream? { manager.currentStream }
@@ -218,10 +219,13 @@ private struct PlayerBar: View {
     var body: some View {
         HStack(spacing: 12) {
             if showsTransport {
-                // Same code path the Lock Screen buttons use
-                // (NowPlayingCommandDelegate), so pause/resume keeps
-                // isPlaying/statusText/the card in step instead of only
-                // changing the picture.
+                // The docked picture covers part of the list, so the row that
+                // started playback may be scrolled out from under the panel —
+                // stop therefore has to live HERE, not only on the row. Both
+                // buttons go through the same paths the Lock Screen uses
+                // (NowPlayingCommandDelegate / PlayerManager.stop), so pause and
+                // stop keep isPlaying, statusText and the now-playing card in
+                // step instead of only changing the picture.
                 Button {
                     manager.player.nowPlayingTogglePlayback()
                 } label: {
@@ -230,6 +234,15 @@ private struct PlayerBar: View {
                         .frame(width: 32, height: 32)
                 }
                 .accessibilityLabel(manager.isPlaying ? "Pause" : "Play")
+
+                Button {
+                    manager.stop()
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.title3)
+                        .frame(width: 32, height: 32)
+                }
+                .accessibilityLabel("Stop")
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(stream?.name ?? "")
