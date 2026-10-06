@@ -97,13 +97,8 @@ struct ContentView: View {
             }
             .animation(.default, value: bannerText)
         }
-        .safeAreaInset(edge: .bottom) {
-            // Player bar: shown only while a stream is playing. Hosts the
-            // AirPlay route-picker button so the user can cast the playing
-            // stream to a speaker/TV/HomePod.
-            if manager.isPlaying {
-                PlayerBar(manager: manager)
-            }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            bottomDock
         }
         // "Open in Browser" fallback: present the channel page in Safari.
         .sheet(isPresented: .init(get: {
@@ -140,6 +135,30 @@ struct ContentView: View {
             }
         } message: {
             Text("The stream couldn\u{2019}t be resolved to a playable URL. Open its page in Safari to watch the live stream (note: playback stays in the browser, not in the app).")
+        }
+    }
+
+    /// Bottom of the screen: the picture (only for a `.video` stream) docked
+    /// directly above the player bar, so transport stays reachable while a
+    /// video plays (card requirement). For an `.audio` stream this is exactly
+    /// the player bar it always was — the video branch cannot be entered
+    /// without `stream.type == .video`.
+    ///
+    /// Docked rather than a modal sheet: a sheet would cover the list, so the
+    /// user could not stop the stream or switch to another one without
+    /// dismissing the video first.
+    @ViewBuilder
+    private var bottomDock: some View {
+        VStack(spacing: 0) {
+            if VideoSurfacePolicy.shouldShow(
+                currentStream: manager.currentStream,
+                hasPlayer: manager.player.avPlayer != nil
+            ) {
+                VideoPanel(manager: manager)
+                PlayerBar(manager: manager, showsTransport: true)
+            } else if manager.isPlaying {
+                PlayerBar(manager: manager)
+            }
         }
     }
 
@@ -183,12 +202,32 @@ struct ContentView: View {
 /// picker, and an "AirPlaying" indicator when routing externally.
 private struct PlayerBar: View {
     @ObservedObject var manager: PlayerManager
+    /// Whether to show the transport button. True only while the video panel is
+    /// on screen: the audio-only bar has always been name + AirPlay only (stop
+    /// lives on the row), and this card's rule is that pause stays reachable
+    /// *while video is shown*. Keeping the flag off for `.audio` means the
+    /// audio bar is literally unchanged.
+    var showsTransport: Bool = false
 
     private var stream: Stream? { manager.currentStream }
     private var isAirPlaying: Bool { manager.player.isExternalPlayback }
 
     var body: some View {
         HStack(spacing: 12) {
+            if showsTransport {
+                // Same code path the Lock Screen buttons use
+                // (NowPlayingCommandDelegate), so pause/resume keeps
+                // isPlaying/statusText/the card in step instead of only
+                // changing the picture.
+                Button {
+                    manager.player.nowPlayingTogglePlayback()
+                } label: {
+                    Image(systemName: manager.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.title3)
+                        .frame(width: 32, height: 32)
+                }
+                .accessibilityLabel(manager.isPlaying ? "Pause" : "Play")
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(stream?.name ?? "")
                     .font(.subheadline)
@@ -215,6 +254,30 @@ private struct PlayerBar: View {
             return "AirPlaying to external device"
         }
         return "Playing"
+    }
+}
+
+/// The docked picture for a `.video` stream.
+///
+/// Size: 16:9 (`VideoSurfacePolicy.aspectRatio`) full-bleed width. AVPlayerLayer
+/// with `.resizeAspect` letterboxes anything else inside that box rather than
+/// cropping it, which is what you want for a mix of stream aspect ratios.
+///
+/// The surface is re-pointed at `manager.player.avPlayer` on every update, so a
+/// new stream swaps the picture and a stop takes it away (player becomes nil →
+/// plain black, never a frozen frame of the stream that just ended).
+private struct VideoPanel: View {
+    @ObservedObject var manager: PlayerManager
+
+    var body: some View {
+        VideoSurface(player: manager.player.avPlayer)
+            .aspectRatio(VideoSurfacePolicy.aspectRatio, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .background(Color.black)
+            .accessibilityElement()
+            // Without a label this is an unlabeled element in the a11y tree,
+            // which is worse than useless to VoiceOver.
+            .accessibilityLabel("Video for \(manager.currentStream?.name ?? "stream")")
     }
 }
 
