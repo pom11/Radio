@@ -118,7 +118,8 @@ struct ContentView: View {
         // When a channel can't resolve to a playable URL in-app, the player sets
         // openInBrowserURL — prompt the user with a clear "Open in Browser"
         // affordance instead of leaving them with a dead "Failed".
-        .onChange(of: manager.player.openInBrowserURL) { newURL in
+        .onChange(of: manager.player.openInBrowserURL) {
+            let newURL = manager.player.openInBrowserURL
             guard let newURL else { offeredOpenInBrowser = nil; return }
             // Only prompt once per URL (dismissing then tapping again re-offs it).
             if offeredOpenInBrowser == nil {
