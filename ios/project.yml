@@ -44,6 +44,15 @@ targets:
             CFBundleURLSchemes:
               - radio
         UILaunchScreen: {}
+        # Portrait-locked UI. The app targets iPhone+iPad (family 1,2); Apple's
+        # validation requires ALL orientations "unless the app requires full
+        # screen" — UIRequiresFullScreen=YES declares that exemption, so
+        # portrait-only is accepted (this is the CarPlay-audio app shape too).
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
   RadioTests:
     type: bundle.unit-test
     platform: iOS
