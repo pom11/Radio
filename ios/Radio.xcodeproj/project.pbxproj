@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		0805E8B9BCABC2466CC85374 /* AirPlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A605F49F29EC3611BE494C4 /* AirPlay.swift */; };
+		1BDCBB039F3E615ADF6408E8 /* VideoSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF86C2D279A6ABDE1ADD109 /* VideoSurface.swift */; };
+		2984625B6E427694FDE2AFB8 /* VideoSurfaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625A72E09F00952584CB45CF /* VideoSurfaceTests.swift */; };
 		2D53493039F67AF9B118B85D /* StreamPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */; };
 		2EC04D7A9E768A111573A775 /* QRScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD67A18C9CEECA7A26393D60 /* QRScanView.swift */; };
 		733D5B9F996166A6998899CC /* SafariView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB6510B8D15525CB33A105A8 /* SafariView.swift */; };
@@ -47,10 +49,12 @@
 		40EF9BC181449D85D7A566AB /* RadioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioApp.swift; sourceTree = "<group>"; };
 		4D087376958BC2DFA13D92BC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5E003833D145A418C5E884ED /* QRScanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanSession.swift; sourceTree = "<group>"; };
+		625A72E09F00952584CB45CF /* VideoSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurfaceTests.swift; sourceTree = "<group>"; };
 		6667DFCFD315B9842A8F446E /* PlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerManager.swift; sourceTree = "<group>"; };
 		80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
 		81C0903AC6C3129100D7414E /* AddStreamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStreamSheet.swift; sourceTree = "<group>"; };
 		8A605F49F29EC3611BE494C4 /* AirPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlay.swift; sourceTree = "<group>"; };
+		9DF86C2D279A6ABDE1ADD109 /* VideoSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurface.swift; sourceTree = "<group>"; };
 		9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayAppDelegate.swift; sourceTree = "<group>"; };
 		A88A9F4D6D114C8D76572F9B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AAD561C99FFD3E29BC31393F /* RadioTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RadioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -83,6 +87,7 @@
 				AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */,
 				B6197E8786DD7C1FA4375EBF /* NowPlayingInfoTests.swift */,
 				0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */,
+				625A72E09F00952584CB45CF /* VideoSurfaceTests.swift */,
 			);
 			path = RadioTests;
 			sourceTree = "<group>";
@@ -118,6 +123,7 @@
 				B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */,
 				E52ED8115F84C1DE229FC06C /* StreamStore.swift */,
 				F8E7E43CE638D6A78A5CFD73 /* URLResolver.swift */,
+				9DF86C2D279A6ABDE1ADD109 /* VideoSurface.swift */,
 			);
 			path = Radio;
 			sourceTree = "<group>";
@@ -222,6 +228,7 @@
 				2D53493039F67AF9B118B85D /* StreamPlayer.swift in Sources */,
 				A75A9B7DC7CF1EE6A5BF0CC8 /* StreamStore.swift in Sources */,
 				98D30DE33D0D4718FBD0D8D3 /* URLResolver.swift in Sources */,
+				1BDCBB039F3E615ADF6408E8 /* VideoSurface.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,6 +239,7 @@
 				AF2C6A2A82C006045F7EBFEE /* ChannelResolverTests.swift in Sources */,
 				F84A0C7ED00E7D05B13E378C /* NowPlayingInfoTests.swift in Sources */,
 				EF0A208C02EE5D6021470EC6 /* StreamStoreTests.swift in Sources */,
+				2984625B6E427694FDE2AFB8 /* VideoSurfaceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
