@@ -75,4 +75,25 @@ final class StreamStore: ObservableObject {
     func indexByPageUrl(_ pageUrl: String) -> Int? {
         streams.firstIndex(where: { $0.pageUrl == pageUrl })
     }
+
+    /// Persist a URL that a refetch-from-source produced (port of the macOS
+    /// StreamStore.applyRefreshedURL). The caller (StreamPlayer's refetch) has
+    /// already judged the candidate; this re-checks `refuseTainted` at the
+    /// storage boundary anyway — defence in depth, because every writer of a
+    /// playable url enforces the same rule and a future caller must not be
+    /// able to bypass it. On a tainted url the existing one survives untouched.
+    ///
+    /// Difference from macOS: only `url` is updated. The macOS refetch rotates
+    /// referer/headers alongside the URL; the iOS native scrape (ChannelResolver)
+    /// yields no new headers, so a refreshed stream keeps the referer/headers it
+    /// already has — its source page is unchanged.
+    @discardableResult
+    func applyRefreshedURL(id: UUID, url: String) -> Stream? {
+        guard let idx = streams.firstIndex(where: { $0.id == id }) else { return nil }
+        if !Self.refuseTainted(url, pageUrl: streams[idx].pageUrl) {
+            streams[idx].url = url
+        }
+        save()
+        return streams[idx]
+    }
 }

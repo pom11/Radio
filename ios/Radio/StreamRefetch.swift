@@ -144,10 +144,51 @@ final class RefetchMachine {
     /// a stream the user started from the list gets a fresh one. A replay that a
     /// successful refresh itself triggered must NOT call this (StreamPlayer
     /// skips it), otherwise every refetch would top the budget back up and a
-    /// permanently dead stream would refetch forever.
+    /// dead stream would refetch forever.
     func reset() {
         isRefreshing = false
         autoAttempts = 0
+    }
+
+    /// Charge ONE automatic recovery attempt to the same budget the refetch uses,
+    /// for the case where a refresh is impossible: a stream with no source page
+    /// cannot be refetched, so its only recovery is a plain retry of the URL it
+    /// already has. That retry MUST share the cap — the failure sink fires again
+    /// as soon as the retried item dies, so an unbudgeted reconnect would loop
+    /// (play → fail → reconnect → play → fail → …) and hammer the CDN forever.
+    /// This is where iOS has to differ from macOS: macOS `reconnect()` is
+    /// unbudgeted because its failure paths are gated differently (proxy
+    /// fallback, nudging, a 30s schedule); on iOS the shared budget is the only
+    /// thing standing between a dead stream and a hot loop.
+    ///
+    /// Returns false (and charges nothing) when the budget is spent.
+    func chargeAutoAttempt() -> Bool {
+        guard autoAttempts < maxAutoAttempts else { return false }
+        autoAttempts += 1
+        return true
+    }
+
+    // MARK: - Resolve plumbing
+
+    /// The stream shape to hand the resolve path when REFETCHING (as opposed to
+    /// playing). Its url is replaced by the source page, so a resolver can
+    /// never "refresh" by re-reading the stale url it is supposed to replace,
+    /// and its type is forced to `.channel` because on iOS the only page →
+    /// playable-URL resolver that exists is the ChannelResolver native scrape
+    /// (gated on `.channel`), and a pageUrl-bearing `.audio`/`.video` stream
+    /// must route through it to get a fresh URL at all — the same job macOS
+    /// URLResolver does there. Everything that makes the result safe (taint
+    /// guard, verification) is applied to the outcome, not to this probe.
+    static func probe(for stream: Stream) -> Stream {
+        guard let page = sourcePage(of: stream) else { return stream }
+        return Stream(
+            name: stream.name,
+            url: page,
+            type: .channel,
+            pageUrl: page,
+            referer: stream.referer,
+            headers: stream.headers
+        )
     }
 
     /// Judge the URL a refresh resolved to.
@@ -187,5 +228,32 @@ final class RefetchMachine {
     /// flaky source page gets less and less traffic, matching macOS.
     var retryAfter: TimeInterval {
         autoAttempts > 1 ? backoffBase * Double(autoAttempts) : backoffBase
+    }
+}
+
+/// Liveness probe for a resolved URL that is not a literal `.m3u8`/`.mpd`
+/// manifest — the check that lets `RefetchMachine.outcome` refuse a dead proxy.
+///
+/// Ported from macOS `StreamPlayer.verifyStreamURL`: a short GET (a HEAD has no
+/// body, so it cannot catch the 0-byte dead-proxy answer) with a tight timeout,
+/// and any non-2xx, error, or empty body means "not verified" → the caller keeps
+/// the last known-good url.
+enum StreamURLProbe {
+    static func verify(_ urlString: String) async -> Bool {
+        guard let url = URL(string: urlString) else { return false }
+        do {
+            var request = URLRequest(url: url, timeoutInterval: 5)
+            request.httpMethod = "GET"
+            request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+                             forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                return false
+            }
+            // A dead proxy answers 200 with a 0-byte body — not a playable stream.
+            return !data.isEmpty
+        } catch {
+            return false
+        }
     }
 }

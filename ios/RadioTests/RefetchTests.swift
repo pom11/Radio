@@ -147,11 +147,11 @@ final class RefetchTests: XCTestCase {
         let s = stream(url: good, pageUrl: page)
         XCTAssertEqual(machine.retryAfter, 10)          // before any attempt
 
-        machine.begin(stream: s, manual: false); machine.finish()
+        _ = machine.begin(stream: s, manual: false); machine.finish()
         XCTAssertEqual(machine.retryAfter, 10)          // 1 attempt spent
-        machine.begin(stream: s, manual: false); machine.finish()
+        _ = machine.begin(stream: s, manual: false); machine.finish()
         XCTAssertEqual(machine.retryAfter, 20)          // 2 spent
-        machine.begin(stream: s, manual: false); machine.finish()
+        _ = machine.begin(stream: s, manual: false); machine.finish()
         XCTAssertEqual(machine.retryAfter, 30)          // 3 spent
     }
 

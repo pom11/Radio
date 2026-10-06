@@ -32,6 +32,37 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     /// leave SwiftUI rendering a surface bound to a player that no longer
     /// exists. Assigned only on the main actor (playback start / stop).
     @Published private(set) var avPlayer: AVPlayer?
+
+    /// True while a refetch-from-source is in flight. Mirrors
+    /// `refetch.isRefreshing` (the machine owns the rule; this is the
+    /// observation surface for the bar's spinner / disabled button), exactly
+    /// like macOS `StreamPlayer.isRefreshing`.
+    @Published private(set) var isRefreshing = false
+
+    /// Called when a refetch produced a genuinely new playable URL, so the
+    /// owner persists it (PlayerManager → StreamStore.applyRefreshedURL).
+    /// Receives the stream with id/name/type/pageUrl preserved and the fresh
+    /// url — same contract as the macOS `onRefreshStream`.
+    var onRefreshStream: ((Stream) -> Void)?
+
+    /// The refetch state machine: re-entrancy guard + auto budget + taint rule.
+    /// Pure (no async, no I/O) — the decisions live in RefetchMachine so
+    /// RadioTests can drive them; this class only owns the task plumbing.
+    let refetch = RefetchMachine()
+    private var refreshTask: Task<Void, Never>?
+    private var refreshRetryTask: DispatchWorkItem?
+    /// Identity counter for refreshTask. A finished/stale task may only clear
+    /// the handle if it is still the current one — otherwise a late-finishing
+    /// task from a previous stream would orphan a NEWER refresh's handle (and
+    /// stop() would lose its ability to cancel it). Bumped on every refresh
+    /// start AND every teardown that drops the handle.
+    private var refreshEpoch = 0
+
+    /// Liveness probe for a resolved URL that is not a literal manifest. A var
+    /// (not a static) so unit tests replace the network with a stub — the
+    /// judgement path is then testable end-to-end without internet.
+    var verifyURL: (String) async -> Bool = StreamURLProbe.verify
+
     private var cancellables = Set<AnyCancellable>()
     private var playTask: Task<Void, Never>?
     private var registeredInterruptObserver = false
@@ -67,6 +98,8 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
 
     deinit {
         playTask?.cancel()
+        refreshTask?.cancel()
+        refreshRetryTask?.cancel()
         avPlayer?.pause()
         NotificationCenter.default.removeObserver(self)
     }
@@ -112,10 +145,32 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
         }
     }
 
-    /// Play a stream, replacing the current one if any. Exactly one stream plays
-    /// at a time.
-    func play(_ stream: Stream) {
-        stop()
+    /// Play a stream, replacing the current one if any. Exactly one stream
+    /// plays at a time.
+    ///
+    /// `userInitiated` — false by DEFAULT, deliberately. The budget belongs to
+    /// one playback *session*: a stream the user just started (row tap, deep
+    /// link, remote skip, play-after-failure) gets a full budget, while a
+    /// replay triggered by the player itself (a successful refetch restarting
+    /// playback) is the same session and must NOT top the budget back up — if
+    /// it did, a permanently dead stream would refetch forever. A default of
+    /// `true` would make every future internal call site silently launder the
+    /// budget; a default of `false` forces each new *user-facing* call site to
+    /// opt in explicitly, which is the mistake worth preventing.
+    func play(_ stream: Stream, userInitiated: Bool = false) {
+        if userInitiated { refetch.reset() }
+        teardownPlayback()
+        // The old stream is gone: its in-flight/pending refetch must die with
+        // it. Bumping the epoch first detaches any still-running task from the
+        // handle (see refreshEpoch). Note `stop()` deliberately does NOT reset
+        // the budget (see there), so the session's spent attempts survive here.
+        refreshEpoch += 1
+        refreshTask?.cancel()
+        refreshTask = nil
+        refreshRetryTask?.cancel()
+        refreshRetryTask = nil
+        refetch.finish()
+        isRefreshing = false
         // Configure the audio session for playback so streams can route to
         // AirPlay destinations. Idempotent and non-fatal on failure.
         AudioSessionConfig.activate()
@@ -218,6 +273,25 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     }
 
     func stop() {
+        teardownPlayback()
+        // The user ended the session: its refetch task, pending retry and
+        // spent budget all go with it. A later start is a fresh user action
+        // (PlayerManager → play(userInitiated: true)) and gets a fresh budget
+        // anyway. Epoch bump first: detaches any in-flight task from the handle.
+        refreshEpoch += 1
+        refreshTask?.cancel()
+        refreshTask = nil
+        refreshRetryTask?.cancel()
+        refreshRetryTask = nil
+        refetch.reset()
+        isRefreshing = false
+    }
+
+    /// Tear the player down WITHOUT touching the refetch budget — the shared
+    /// body of `stop()` (user-initiated) and `play()` (which must replace the
+    /// previous stream but keep the session's spent auto attempts alive, so an
+    /// internal refetch-replay cannot launder its way back to a full budget).
+    private func teardownPlayback() {
         playTask?.cancel()
         playTask = nil
         cancellables.removeAll()
@@ -238,7 +312,163 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
         if currentStream?.id == stream.id && isPlaying {
             stop()
         } else {
+            play(stream, userInitiated: true)
+        }
+    }
+
+    // MARK: - Refetch from source (port of macOS refreshFromSource)
+
+    /// Re-fetch a fresh playable URL from the stream's source page.
+    ///
+    /// The iOS port of macOS `StreamPlayer.refreshFromSource(_:manual:)`
+    /// (Sources/StreamPlayer.swift:349). All three rules — can this run, may it
+    /// run again, is the result safe to save — live in `RefetchMachine`, so this
+    /// method is only the async plumbing around them: run the resolve path,
+    /// probe the result, then persist or keep the old URL.
+    ///
+    /// - `manual`: true for the bar's Refresh button (unbounded budget, as on
+    ///   macOS); false for automatic refetch after a playback failure (bounded).
+    /// - Returns true if a refresh was started, false if it could not run (no
+    ///   source page, one already in flight, or the auto budget is spent).
+    @discardableResult
+    func refreshFromSource(_ stream: Stream, manual: Bool) -> Bool {
+        switch refetch.begin(stream: stream, manual: manual) {
+        case .refused(let refusal):
+            // Only a manual attempt talks to the user — an automatic one that
+            // the budget refused must fail silently, exactly as on macOS.
+            if manual {
+                switch refusal {
+                case .noSourcePage: statusText = "No source page to refetch from"
+                case .alreadyRefreshing, .autoBudgetExhausted: break
+                }
+            }
+            log.info("refresh refused (\(String(describing: refusal), privacy: .public)) for \(stream.name, privacy: .public)")
+            return false
+
+        case .start:
+            break
+        }
+
+        isRefreshing = true
+        statusText = "Re-fetching from source..."
+
+        let probeStream = RefetchMachine.probe(for: stream)
+        refreshEpoch += 1
+        let epoch = refreshEpoch
+        refreshTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer {
+                // Only the CURRENT task may clear the handle (see refreshEpoch).
+                if self.refreshEpoch == epoch { self.refreshTask = nil }
+            }
+
+            // The resolve path gets a PROBE whose url is the source page (see
+            // RefetchMachine.probe), so it cannot "resolve" by re-reading the
+            // stale url it is meant to replace. This is the iOS resolve path —
+            // ChannelResolver's native scrape, no yt-dlp and no subprocess.
+            let candidate = await self.resolve(probeStream)
+
+            // Judge the candidate only while still responsible for this stream,
+            // and after clearing the guard (macOS order): a slow refresh must
+            // never write a URL for a stream the user has since switched to.
+            let stillCurrent = self.currentStream?.id == stream.id
+            self.refetch.finish()
+            self.isRefreshing = false
+            guard !Task.isCancelled, stillCurrent else { return }
+
+            let verified: Bool
+            if RefetchMachine.isLiteralManifest(candidate ?? "") {
+                verified = true
+            } else if let candidate {
+                verified = await self.verifyURL(candidate)
+            } else {
+                verified = false
+            }
+
+            switch self.refetch.outcome(for: candidate, stream: stream, verified: verified) {
+            case .persist(let freshURL):
+                var refreshed = stream
+                refreshed.url = freshURL
+                // referer/headers are kept as-is (the source page is unchanged,
+                // and the iOS scrape yields no new headers).
+                log.info("refreshed \(stream.name, privacy: .public) from source")
+                self.onRefreshStream?(refreshed)
+                self.play(refreshed)
+
+            case .rejected(let tainted):
+                // The resolver fell through to the page (or handed back
+                // something unverifiable). The last known-good url WINS — that
+                // is the whole point of the guard.
+                self.statusText = "Refresh failed"
+                log.error("refresh rejected tainted url \(tainted, privacy: .public) for \(stream.name, privacy: .public); keeping existing url")
+                if !manual { self.scheduleRefreshRetry(stream) }
+
+            case .failed:
+                self.statusText = "Refresh failed"
+                log.error("refresh could not resolve \(stream.name, privacy: .public) from its source page")
+                if !manual { self.scheduleRefreshRetry(stream) }
+            }
+        }
+        return true
+    }
+
+    /// Retry a *failed automatic* refresh after a backoff, as long as this
+    /// stream is still the one we are playing. Budget is charged by
+    /// `refreshFromSource` on the retry itself, so retries cannot exceed the cap.
+    private func scheduleRefreshRetry(_ stream: Stream) {
+        refreshRetryTask?.cancel()
+        let delay = refetch.retryAfter
+        let task = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.refreshRetryTask = nil
+            guard self.currentStream?.id == stream.id else { return }
+            _ = self.refreshFromSource(stream, manual: false)
+        }
+        refreshRetryTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: task)
+    }
+
+    /// Route a playback failure (card requirement: a failed stream must try to
+    /// recover instead of dead-ending at "Failed").
+    ///
+    /// Three outcomes, in the same priority order as macOS `handlePlaybackFailure`:
+    /// 1. has a source page → refetch a fresh URL from it (budgeted);
+    /// 2. no source page, budget left → retry the URL we already have;
+    /// 3. budget spent → give up honestly, and for a channel offer the browser.
+    ///
+    /// (2) is charged to the SAME budget as (1) and is why this exists: the
+    /// failure sink fires again the moment the retried item dies, so an
+    /// unbudgeted retry of a dead URL would loop forever.
+    private func handlePlaybackFailure() {
+        guard let stream = currentStream else { return }
+        if RefetchMachine.canRefresh(stream) {
+            if refreshFromSource(stream, manual: false) { return }
+            // Refused (budget spent or a refresh already in flight): fall
+            // through to the honest end state rather than silently doing nothing.
+        }
+        if refetch.chargeAutoAttempt() {
+            log.info("playback failed with no source page; retrying same url (auto attempt \(self.refetch.autoAttempts))")
+            statusText = "Reconnecting..."
             play(stream)
+            return
+        }
+        log.error("playback failed and the recovery budget is spent for \(stream.name, privacy: .public)")
+        giveUpOnPlayback(stream, reason: "Failed")
+    }
+
+    /// The honest end state for a stream that cannot play: no phantom
+    /// "Playing", no Lock Screen card, and for a channel the working escape
+    /// hatch (Safari) instead of a dead failure.
+    private func giveUpOnPlayback(_ stream: Stream, reason: String) {
+        statusText = reason
+        isPlaying = false
+        nowPlaying.clear()
+        if stream.type == .channel {
+            let page = stream.pageUrl ?? stream.url
+            if let url = URL(string: page), !StreamStore.refuseTainted(page, pageUrl: nil) {
+                openInBrowserURL = url
+                statusText = "Open in browser"
+            }
         }
     }
 
@@ -322,8 +552,10 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     func nowPlayingResume() -> Bool {
         guard let stream = currentStream else { return false }
         if avPlayer == nil {
-            // Item was torn down (e.g. after a failure): start from scratch.
-            play(stream)
+            // Item was torn down (e.g. after a failure): the user pressing play
+            // again IS a fresh session — they are asking for another go, so it
+            // gets a fresh recovery budget.
+            play(stream, userInitiated: true)
             return true
         }
         AudioSessionConfig.activate()
@@ -360,7 +592,7 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
         guard let index = NowPlayingInfo.nextIndex(current: current.id, in: streams, forward: forward) else {
             return false
         }
-        play(streams[index])
+        play(streams[index], userInitiated: true)
         return true
     }
 
@@ -404,11 +636,14 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
                     }
                 case .failed:
                     log.error("item failed: \(item.error?.localizedDescription ?? "unknown")")
-                    self.statusText = "Failed"
-                    self.isPlaying = false
-                    // The stream died: take the card away rather than leaving a
-                    // paused entry on the Lock Screen for audio that is gone.
-                    self.nowPlaying.clear()
+                    // The stream died: don't dead-end at "Failed" (the iOS gap
+                    // this ports from macOS) — try to recover: refetch a fresh
+                    // URL from the source page if there is one, else retry the
+                    // current URL within the shared auto budget. The "no card
+                    // for dead audio" rule is enforced by giveUpOnPlayback, the
+                    // honest end state the recovery funnels into when it runs
+                    // out of attempts.
+                    self.handlePlaybackFailure()
                 default:
                     break
                 }

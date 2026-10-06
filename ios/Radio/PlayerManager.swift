@@ -26,16 +26,27 @@ final class PlayerManager: ObservableObject {
         player.objectWillChange
             .sink { [weak self] in self?.objectWillChange.send() }
             .store(in: &cancellables)
+
+        // A refetch that produced a fresh URL must reach the saved list, or the
+        // fix dies with the process (same wiring as macOS PlayerManager). The
+        // player already taint-checked the URL; applyRefreshedURL re-checks at
+        // the storage boundary and persists synchronously (StreamStore.save is
+        // synchronous by design — keep it).
+        player.onRefreshStream = { refreshed in
+            _ = StreamStore.shared.applyRefreshedURL(id: refreshed.id, url: refreshed.url)
+        }
     }
 
     /// Play a stream, replacing the current one (single-stream requirement).
+    /// Every UI/CarPlay entry point lands here, so this is a user action and
+    /// gets a fresh recovery budget (see StreamPlayer.play(userInitiated:)).
     @discardableResult
     func play(stream: Stream) -> StreamPlayer {
         // Toggle: tapping the currently-playing stream stops it.
         if let current = player.currentStream, current.id == stream.id, player.isPlaying {
             player.stop()
         } else {
-            player.play(stream)
+            player.play(stream, userInitiated: true)
         }
         return player
     }
