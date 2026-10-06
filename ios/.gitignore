@@ -1,5 +1,7 @@
 # Xcode
-*.xcodeproj
+# NOTE: Radio.xcodeproj is intentionally COMMITTED (generated from project.yml
+# via xcodegen, but kept in-repo so the project opens with zero setup).
+# Regenerate after changing project.yml: xcodegen generate --spec project.yml
 xcuserdata/
 DerivedData/
 build/

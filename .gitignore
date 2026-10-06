@@ -2,6 +2,7 @@
 build/
 .swiftpm/
 *.xcodeproj
+!ios/Radio.xcodeproj/
 xcuserdata/
 DerivedData/
 __pycache__/

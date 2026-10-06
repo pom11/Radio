@@ -1,0 +1,481 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0805E8B9BCABC2466CC85374 /* AirPlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A605F49F29EC3611BE494C4 /* AirPlay.swift */; };
+		2D53493039F67AF9B118B85D /* StreamPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */; };
+		2EC04D7A9E768A111573A775 /* QRScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD67A18C9CEECA7A26393D60 /* QRScanView.swift */; };
+		733D5B9F996166A6998899CC /* SafariView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB6510B8D15525CB33A105A8 /* SafariView.swift */; };
+		8A2AC394B0DEFD8D18486859 /* RadioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40EF9BC181449D85D7A566AB /* RadioApp.swift */; };
+		8F995DD7123657236DB3B8F0 /* AddStreamSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C0903AC6C3129100D7414E /* AddStreamSheet.swift */; };
+		9673A13FE3EA3AD04075CAE4 /* PlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6667DFCFD315B9842A8F446E /* PlayerManager.swift */; };
+		97110A627718C62D71A98B09 /* QRScannerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6B0223DD2BB2676FA440437 /* QRScannerViewController.swift */; };
+		98D30DE33D0D4718FBD0D8D3 /* URLResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E7E43CE638D6A78A5CFD73 /* URLResolver.swift */; };
+		A2E26CD0612A8BEF44A9470F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D087376958BC2DFA13D92BC /* ContentView.swift */; };
+		A75A9B7DC7CF1EE6A5BF0CC8 /* StreamStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52ED8115F84C1DE229FC06C /* StreamStore.swift */; };
+		AF2C6A2A82C006045F7EBFEE /* ChannelResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */; };
+		AF2FEEA4A8EF04B2A418EC17 /* Stream.swift in Sources */ = {isa = PBXBuildFile; fileRef = C766C15FBAA661D54E2AB439 /* Stream.swift */; };
+		B314ADA64824A7E12B7A77A5 /* QRScannerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE44FE6131A38B173B3C3171 /* QRScannerController.swift */; };
+		CA354657A65EC89C6616A869 /* ChannelResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E447DF05519267E103F32060 /* ChannelResolver.swift */; };
+		D1C76960E61FAAD876FA9F30 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */; };
+		E09FAC23719DBA0C042364BE /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD69118C654D6B3BE0F91293 /* CarPlaySceneDelegate.swift */; };
+		EF0A208C02EE5D6021470EC6 /* StreamStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */; };
+		FB07E31546D548B242D8C5B6 /* CarPlayAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		41C4BA074B41E46F6A43E0EB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DB2075DAB119E92CC077C64B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 79879A702BFC1272555CBA2D;
+			remoteInfo = Radio;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamStoreTests.swift; sourceTree = "<group>"; };
+		107B7BFE2F9F012B5BF3EE97 /* Radio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Radio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		40EF9BC181449D85D7A566AB /* RadioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioApp.swift; sourceTree = "<group>"; };
+		4D087376958BC2DFA13D92BC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		6667DFCFD315B9842A8F446E /* PlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerManager.swift; sourceTree = "<group>"; };
+		80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
+		81C0903AC6C3129100D7414E /* AddStreamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStreamSheet.swift; sourceTree = "<group>"; };
+		8A605F49F29EC3611BE494C4 /* AirPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlay.swift; sourceTree = "<group>"; };
+		9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayAppDelegate.swift; sourceTree = "<group>"; };
+		A88A9F4D6D114C8D76572F9B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AAD561C99FFD3E29BC31393F /* RadioTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RadioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelResolverTests.swift; sourceTree = "<group>"; };
+		AE44FE6131A38B173B3C3171 /* QRScannerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerController.swift; sourceTree = "<group>"; };
+		B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamPlayer.swift; sourceTree = "<group>"; };
+		B6B0223DD2BB2676FA440437 /* QRScannerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerViewController.swift; sourceTree = "<group>"; };
+		BD67A18C9CEECA7A26393D60 /* QRScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanView.swift; sourceTree = "<group>"; };
+		C766C15FBAA661D54E2AB439 /* Stream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stream.swift; sourceTree = "<group>"; };
+		CB6510B8D15525CB33A105A8 /* SafariView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariView.swift; sourceTree = "<group>"; };
+		E447DF05519267E103F32060 /* ChannelResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelResolver.swift; sourceTree = "<group>"; };
+		E52ED8115F84C1DE229FC06C /* StreamStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamStore.swift; sourceTree = "<group>"; };
+		F8E7E43CE638D6A78A5CFD73 /* URLResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLResolver.swift; sourceTree = "<group>"; };
+		FAC34D226BAEE99B497D2055 /* Radio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Radio.entitlements; sourceTree = "<group>"; };
+		FD69118C654D6B3BE0F91293 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2E6B7245B88FB25073950B4B = {
+			isa = PBXGroup;
+			children = (
+				B190F9DD9BD8E6C9681CB524 /* Radio */,
+				4E73B44FB6B6011D06A9DDEA /* RadioTests */,
+				4EF3F828190695C047D3B043 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4E73B44FB6B6011D06A9DDEA /* RadioTests */ = {
+			isa = PBXGroup;
+			children = (
+				AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */,
+				0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */,
+			);
+			path = RadioTests;
+			sourceTree = "<group>";
+		};
+		4EF3F828190695C047D3B043 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				107B7BFE2F9F012B5BF3EE97 /* Radio.app */,
+				AAD561C99FFD3E29BC31393F /* RadioTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B190F9DD9BD8E6C9681CB524 /* Radio */ = {
+			isa = PBXGroup;
+			children = (
+				81C0903AC6C3129100D7414E /* AddStreamSheet.swift */,
+				8A605F49F29EC3611BE494C4 /* AirPlay.swift */,
+				9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */,
+				FD69118C654D6B3BE0F91293 /* CarPlaySceneDelegate.swift */,
+				E447DF05519267E103F32060 /* ChannelResolver.swift */,
+				4D087376958BC2DFA13D92BC /* ContentView.swift */,
+				80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */,
+				A88A9F4D6D114C8D76572F9B /* Info.plist */,
+				6667DFCFD315B9842A8F446E /* PlayerManager.swift */,
+				AE44FE6131A38B173B3C3171 /* QRScannerController.swift */,
+				B6B0223DD2BB2676FA440437 /* QRScannerViewController.swift */,
+				BD67A18C9CEECA7A26393D60 /* QRScanView.swift */,
+				FAC34D226BAEE99B497D2055 /* Radio.entitlements */,
+				40EF9BC181449D85D7A566AB /* RadioApp.swift */,
+				CB6510B8D15525CB33A105A8 /* SafariView.swift */,
+				C766C15FBAA661D54E2AB439 /* Stream.swift */,
+				B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */,
+				E52ED8115F84C1DE229FC06C /* StreamStore.swift */,
+				F8E7E43CE638D6A78A5CFD73 /* URLResolver.swift */,
+			);
+			path = Radio;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		64BFB24FBDC5AB2A9F717512 /* RadioTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5B095B79AC581EBFADDC5793 /* Build configuration list for PBXNativeTarget "RadioTests" */;
+			buildPhases = (
+				A70E3F444B1326860136B917 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2B4A1ED2B5B2874CA0D6D9F9 /* PBXTargetDependency */,
+			);
+			name = RadioTests;
+			packageProductDependencies = (
+			);
+			productName = RadioTests;
+			productReference = AAD561C99FFD3E29BC31393F /* RadioTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		79879A702BFC1272555CBA2D /* Radio */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 53CA566D940569C8B87B1192 /* Build configuration list for PBXNativeTarget "Radio" */;
+			buildPhases = (
+				69B6D622D3D1AB1F2C434E09 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Radio;
+			packageProductDependencies = (
+			);
+			productName = Radio;
+			productReference = 107B7BFE2F9F012B5BF3EE97 /* Radio.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DB2075DAB119E92CC077C64B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					64BFB24FBDC5AB2A9F717512 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					79879A702BFC1272555CBA2D = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1D049CF99C5B3132251541FE /* Build configuration list for PBXProject "Radio" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 2E6B7245B88FB25073950B4B;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4EF3F828190695C047D3B043 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				79879A702BFC1272555CBA2D /* Radio */,
+				64BFB24FBDC5AB2A9F717512 /* RadioTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		69B6D622D3D1AB1F2C434E09 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F995DD7123657236DB3B8F0 /* AddStreamSheet.swift in Sources */,
+				0805E8B9BCABC2466CC85374 /* AirPlay.swift in Sources */,
+				FB07E31546D548B242D8C5B6 /* CarPlayAppDelegate.swift in Sources */,
+				E09FAC23719DBA0C042364BE /* CarPlaySceneDelegate.swift in Sources */,
+				CA354657A65EC89C6616A869 /* ChannelResolver.swift in Sources */,
+				A2E26CD0612A8BEF44A9470F /* ContentView.swift in Sources */,
+				D1C76960E61FAAD876FA9F30 /* DeepLinkHandler.swift in Sources */,
+				9673A13FE3EA3AD04075CAE4 /* PlayerManager.swift in Sources */,
+				2EC04D7A9E768A111573A775 /* QRScanView.swift in Sources */,
+				B314ADA64824A7E12B7A77A5 /* QRScannerController.swift in Sources */,
+				97110A627718C62D71A98B09 /* QRScannerViewController.swift in Sources */,
+				8A2AC394B0DEFD8D18486859 /* RadioApp.swift in Sources */,
+				733D5B9F996166A6998899CC /* SafariView.swift in Sources */,
+				AF2FEEA4A8EF04B2A418EC17 /* Stream.swift in Sources */,
+				2D53493039F67AF9B118B85D /* StreamPlayer.swift in Sources */,
+				A75A9B7DC7CF1EE6A5BF0CC8 /* StreamStore.swift in Sources */,
+				98D30DE33D0D4718FBD0D8D3 /* URLResolver.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A70E3F444B1326860136B917 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AF2C6A2A82C006045F7EBFEE /* ChannelResolverTests.swift in Sources */,
+				EF0A208C02EE5D6021470EC6 /* StreamStoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2B4A1ED2B5B2874CA0D6D9F9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 79879A702BFC1272555CBA2D /* Radio */;
+			targetProxy = 41C4BA074B41E46F6A43E0EB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		2EFBDEEB0E146068C2CA0756 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Radio/Radio.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Radio/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ro.pom.radio.ios;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3CADF7B348A70E0D08E5831B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ro.pom.RadioTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Radio.app/Radio";
+			};
+			name = Release;
+		};
+		4651E0120060FD1589D992DC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		6FE3DD843675A1CA6D4536F2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		7D27A172464F31E5EF968B3D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ro.pom.RadioTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Radio.app/Radio";
+			};
+			name = Debug;
+		};
+		FEC5C2BC64D06A95B5B891BB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Radio/Radio.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Radio/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ro.pom.radio.ios;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1D049CF99C5B3132251541FE /* Build configuration list for PBXProject "Radio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6FE3DD843675A1CA6D4536F2 /* Debug */,
+				4651E0120060FD1589D992DC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		53CA566D940569C8B87B1192 /* Build configuration list for PBXNativeTarget "Radio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FEC5C2BC64D06A95B5B891BB /* Debug */,
+				2EFBDEEB0E146068C2CA0756 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5B095B79AC581EBFADDC5793 /* Build configuration list for PBXNativeTarget "RadioTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7D27A172464F31E5EF968B3D /* Debug */,
+				3CADF7B348A70E0D08E5831B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DB2075DAB119E92CC077C64B /* Project object */;
+}
