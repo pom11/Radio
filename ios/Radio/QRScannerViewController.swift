@@ -1,5 +1,11 @@
 import UIKit
 import AVFoundation
+import os.log
+
+/// Capture-path logging. "Nothing happens when I point at the QR" is
+/// indistinguishable from a dozen causes without this; read it in Console.app
+/// with the device attached, subsystem ro.pom.radio.ios, category qr.
+private let log = Logger(subsystem: "ro.pom.radio.ios", category: "qr")
 
 /// Camera view controller that runs an AVCaptureSession configured to emit QR
 /// metadata. This is the isolation point for the AVCaptureMetadataOutput decode
@@ -56,6 +62,7 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         guard let device = AVCaptureDevice.default(for: .video),
               let input = try? AVCaptureDeviceInput(device: device) else {
             // Previously `return` — a silent black screen with nothing to act on.
+            log.error("no usable video capture device/input")
             onSetupFailure?()
             return
         }
@@ -78,16 +85,40 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         }
         session.addOutput(metadataOutput)
         metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
+
+        // Set the types INSIDE the configuration block, which is the documented
+        // requirement (the output must already belong to the session) and the
+        // ordering that works.
+        //
+        // This was briefly gated on `availableMetadataObjectTypes.contains(.qr)`
+        // AFTER commitConfiguration. That list is legitimately empty until the
+        // session has a running connection, so the guard could trip on a
+        // perfectly good camera and return early — leaving no preview layer, no
+        // started session and no object types, i.e. a scanner that silently
+        // never decodes anything. Availability is advisory here, never a gate.
+        metadataOutput.metadataObjectTypes = [.qr]
         session.commitConfiguration()
 
-        // Must come AFTER the output is attached and the configuration is
-        // committed: availableMetadataObjectTypes is empty until the output has
-        // a connection, and assigning an unsupported type raises.
-        guard metadataOutput.availableMetadataObjectTypes.contains(.qr) else {
-            onSetupFailure?()
-            return
+        if !metadataOutput.availableMetadataObjectTypes.contains(.qr) {
+            log.warning("QR not yet listed in availableMetadataObjectTypes (count \(metadataOutput.availableMetadataObjectTypes.count)); continuing anyway — the list fills in once the connection is live")
         }
-        metadataOutput.metadataObjectTypes = [.qr]
+
+        // QR codes are read at arm's length or closer; the default focus range
+        // hunts past them and can leave the code permanently soft.
+        if device.isAutoFocusRangeRestrictionSupported || device.isFocusModeSupported(.continuousAutoFocus) {
+            do {
+                try device.lockForConfiguration()
+                if device.isFocusModeSupported(.continuousAutoFocus) {
+                    device.focusMode = .continuousAutoFocus
+                }
+                if device.isAutoFocusRangeRestrictionSupported {
+                    device.autoFocusRangeRestriction = .near
+                }
+                device.unlockForConfiguration()
+            } catch {
+                log.warning("could not configure focus: \(error.localizedDescription)")
+            }
+        }
 
         let preview = AVCaptureVideoPreviewLayer(session: session)
         preview.videoGravity = .resizeAspectFill
@@ -97,7 +128,11 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         captureSession = session
         previewLayer = preview
 
-        sessionQueue.async { session.startRunning() }
+        log.info("session configured (device \(device.localizedName, privacy: .public)); starting")
+        sessionQueue.async {
+            session.startRunning()
+            log.info("session running: \(session.isRunning)")
+        }
     }
 
     // MARK: - AVCaptureMetadataOutputObjectsDelegate
@@ -106,6 +141,7 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
                         didOutput metadataObjects: [AVMetadataObject],
                         from connection: AVCaptureConnection) {
         guard !didScan else { return }
+        log.debug("metadata callback: \(metadataObjects.count) object(s)")
 
         // Take the first object that actually CARRIES a string. Using
         // `metadataObjects.first` and bailing when it had no stringValue meant a
@@ -120,6 +156,7 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
 
         // Lock to a single decode; stop the session so the screen holds on the
         // decoded link instead of re-firing on the next frame.
+        log.info("decoded QR, \(string.count) chars")
         didScan = true
         if let session = captureSession, session.isRunning {
             sessionQueue.async { session.stopRunning() }
