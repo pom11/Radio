@@ -100,7 +100,7 @@ struct ContentView: View {
             }
             .animation(.default, value: bannerText)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .safeAreaInset(edge: .bottom) {
             bottomDock
         }
         // "Open in Browser" fallback: present the channel page in Safari.

@@ -54,10 +54,25 @@ final class VideoSurfaceUITests: XCTestCase {
         XCTAssertLessThan(surface.frame.maxY, app.frame.height,
                           "surface reaches the bottom edge — the player bar would be unreachable")
 
-        // The card's other requirement: transport stays reachable while video
-        // is on screen.
-        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 10),
+        // The card's other requirement: transport stays reachable AND works
+        // while video is on screen. Pause, resume and stop all have to keep the
+        // picture and the bar in step.
+        let pause = app.buttons["Pause"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 10),
                       "player bar lost its pause control while video is showing")
+        pause.tap()
+
+        // Pausing must NOT take the picture away — the frame stays, frozen.
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 10),
+                      "pause did not flip the transport button")
+        XCTAssertTrue(app.otherElements["videoSurface"].exists,
+                      "the picture disappeared on pause — only the audio should stop")
+
+        // Stop (tapping the playing row again) must take the picture away: a
+        // black panel for a stream that is gone is the ghost-card bug in UI form.
+        play(name: name)
+        XCTAssertFalse(app.otherElements["videoSurface"].waitForExistence(timeout: 5),
+                       "the picture survived stop — a black rectangle for nothing")
     }
 
     /// The rule that protects the audio path, asserted at the level where an
