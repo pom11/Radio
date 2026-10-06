@@ -31,11 +31,13 @@ struct QRScanView: View {
 
     @State private var authorization: Authorization = .undetermined
 
-    /// The capture session is owned HERE, not inside the representable.
-    /// `@StateObject` is created once per view lifetime, so re-evaluating the
-    /// body cannot produce a second session on the same camera — which is what
-    /// made the preview look alive while no metadata callback ever fired.
-    @StateObject private var scanSession = QRScanSession()
+    /// The PROCESS-WIDE session — deliberately not `@StateObject`.
+    ///
+    /// `@StateObject` gives one object per view INSTANCE, and the device log
+    /// showed SwiftUI building this view twice for one `.fullScreenCover`
+    /// presentation: two sessions, one camera, no metadata callbacks. Sharing
+    /// one session makes the duplicate harmless.
+    @ObservedObject private var scanSession = QRScanSession.shared
 
     var body: some View {
         // A NavigationStack is REQUIRED here: this view is presented with
@@ -82,13 +84,12 @@ struct QRScanView: View {
     private var scanner: some View {
         QRScannerController(session: scanSession.session)
             .onAppear {
-                scanSession.onScan = { string in
+                scanSession.beginScanning { string in
                     onScan(string)
                     dismiss()
                 }
-                scanSession.start()      // idempotent
             }
-            .onDisappear { scanSession.stop() }
+            .onDisappear { scanSession.endScanning() }
         .overlay(alignment: .bottom) {
             Text("Point the camera at the macOS QR code")
                 .font(.footnote)
