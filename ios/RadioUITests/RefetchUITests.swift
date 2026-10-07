@@ -209,7 +209,12 @@ final class RefetchUITests: XCTestCase {
                       "the entered source page did not reach the stream — Refresh is the only "
                     + "observable proof, and it is missing")
 
-        app.buttons["Stop"].tap()
+        // Cleanup only, and by the same path a user has: a PLAYING audio bar has
+        // no Stop (transport lives on the row / on the failed bar), so Stop is
+        // tapped only once it appears — the dead socket guarantees it arrives.
+        if app.buttons["Stop"].waitForExistence(timeout: 30) {
+            app.buttons["Stop"].tap()
+        }
     }
 
     // MARK: - Helpers (same shape as VideoSurfaceUITests, plus a url argument)
