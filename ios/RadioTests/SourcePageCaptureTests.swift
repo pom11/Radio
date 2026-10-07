@@ -128,4 +128,35 @@ final class SourcePageCaptureTests: XCTestCase {
                      "an audio stream must not grow a fabricated source page")
         XCTAssertFalse(RefetchMachine.canRefresh(store.streams[0]))
     }
+
+    // MARK: - QR import without a pageUrl stays exactly as it was (card item 3)
+    //
+    // The deep-link/QR path was already correct and must stay untouched: a
+    // channel is refreshable via its own url, and nothing invents a page for a
+    // playable url. These pin that so a future "helpful" default cannot change
+    // ingestion semantics.
+
+    func testQRImportedChannelWithoutPageUrlIsStillRefreshable() {
+        let store = makeStore()
+        // The macOS QR export omits pageUrl for a channel it never had one for
+        // (the user's Realitatea entry) — the url is the page, by design.
+        let qr = "radio://add?url=https%3A%2F%2Fwww.youtube.com%2F%40TuDecizi-s3g&name=Realitatea&type=channel"
+        XCTAssertEqual(DeepLinkHandler(store: store).handle(string: qr), .added)
+
+        let imported = store.streams[0]
+        XCTAssertNil(imported.pageUrl, "the QR path must not synthesise a pageUrl it was not given")
+        XCTAssertTrue(RefetchMachine.canRefresh(imported),
+                      "a QR-imported channel lost its only refresh route")
+        XCTAssertEqual(RefetchMachine.sourcePage(of: imported),
+                       "https://www.youtube.com/@TuDecizi-s3g")
+    }
+
+    func testQRImportedAudioWithoutPageUrlGrowsNoPage() {
+        let store = makeStore()
+        let qr = "radio://add?url=https%3A%2F%2Fcdn.example.com%2Fa.mp3&name=Plain&type=audio"
+        XCTAssertEqual(DeepLinkHandler(store: store).handle(string: qr), .added)
+        XCTAssertNil(store.streams[0].pageUrl)
+        XCTAssertFalse(RefetchMachine.canRefresh(store.streams[0]),
+                       "guessing a page from a playable url is the taint bug in waiting")
+    }
 }
