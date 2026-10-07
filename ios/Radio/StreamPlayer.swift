@@ -39,14 +39,21 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     /// like macOS `StreamPlayer.isRefreshing`.
     @Published private(set) var isRefreshing = false
 
-    /// The current stream is PLAYED-AND-DEAD: the automatic recovery budget is
-    /// spent and no further attempt is coming. `isPlaying == false` alone does
-    /// NOT capture this — a paused stream is also not playing, and the audio
-    /// bar has always hidden itself on pause. This flag exists so the dock can
-    /// keep the bar (and its Refresh affordance) on screen exactly for the
+    /// The current stream is DEAD and no further attempt is coming: either its
+    /// URL never resolved to something playable (a broken link), or it played
+    /// and the automatic recovery budget was spent. `isPlaying == false` alone
+    /// does NOT capture this — a paused stream is also not playing, and the
+    /// audio bar has always hidden itself on pause. This flag exists so the dock
+    /// can keep the bar (and its Refresh affordance) on screen exactly for the
     /// state the user needs it: a stream that failed for good and might work
-    /// with a fresh URL. Set by giveUpOnPlayback; cleared by any new play or
-    /// stop.
+    /// with a fresh URL.
+    ///
+    /// Every terminal-failure path sets it via `failPlayback` — including the
+    /// paths where playback never even started. That is the fix for "i dont see
+    /// the refresh stream if the link is broken": the Refresh button lives only
+    /// in the bar, so a failure that unmounted the bar took the user's only
+    /// lever with it. Set by `failPlayback`; cleared by any new play or stop
+    /// (`teardownPlayback`).
     @Published private(set) var isFailed = false
 
     /// Called when a refetch produced a genuinely new playable URL, so the
@@ -219,8 +226,10 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
         // enables. The resolved value is independently taint-checked below, so a
         // page can never actually reach AVPlayer.
         if stream.type != .channel, StreamStore.refuseTainted(stream.url, pageUrl: stream.pageUrl) {
-            statusText = stream.type == .channel ? "Offline" : "Failed"
-            isPlaying = false
+            // A terminal failure like any other: the user still needs the bar
+            // (Refresh, retry, Stop), so it goes through the one failure state
+            // instead of a bare statusText write that unmounted the bar.
+            failPlayback(stream, reason: "Failed")
             return
         }
 
@@ -239,8 +248,7 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
                 return
             }
             guard let url = URL(string: resolved) else {
-                self.statusText = "Invalid URL"
-                self.isPlaying = false
+                self.failPlayback(stream, reason: "Invalid URL")
                 return
             }
             self.startPlayback(url: url, stream: stream)
@@ -254,11 +262,34 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     /// (Safari) — the honest, working way to watch a signed/DRM live stream the
     /// app cannot extract in pure Swift.
     private func handleResolveFailure(_ stream: Stream) {
-        statusText = "Failed"
+        failPlayback(stream, reason: "Failed")
+    }
+
+    /// THE single terminal-failure state for the current stream.
+    ///
+    /// Every path that ends with "this stream cannot play" funnels through here
+    /// so they all agree on what the user is left with: an honest status line,
+    /// no phantom "Playing", no Lock Screen card, `isFailed` set (which is what
+    /// keeps the bar — and therefore the Refresh button — on screen), and for a
+    /// channel the working escape hatch (Safari).
+    ///
+    /// The four callers, all of which the user can hit with one broken link:
+    /// the taint early-return in `play`, an unparseable resolved url,
+    /// `handleResolveFailure` (nothing resolved / the resolver fell through to
+    /// the page), and `giveUpOnPlayback` (played, then the recovery budget ran
+    /// out). Before this existed only the last one set `isFailed`, which is why
+    /// a link that never started playing offered no Refresh at all.
+    ///
+    /// Deliberately does NOT tear the player down: `currentStream` must survive
+    /// so the bar can name the stream the Refresh button applies to.
+    private func failPlayback(_ stream: Stream, reason: String) {
+        isFailed = true
+        statusText = reason
         isPlaying = false
+        nowPlaying.clear()
         if stream.type == .channel {
             let page = stream.pageUrl ?? stream.url
-            if let url = URL(string: page), StreamStore.refuseTainted(page, pageUrl: nil) == false {
+            if let url = URL(string: page), !StreamStore.refuseTainted(page, pageUrl: nil) {
                 openInBrowserURL = url
                 statusText = "Open in browser"
             }
@@ -497,30 +528,7 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
             return
         }
         log.error("playback failed and the recovery budget is spent for \(stream.name, privacy: .public)")
-        giveUpOnPlayback(stream, reason: "Failed")
-    }
-
-    /// The honest end state for a stream that cannot play: no phantom
-    /// "Playing", no Lock Screen card, and for a channel the working escape
-    /// hatch (Safari) instead of a dead failure.
-    ///
-    /// Sets `isFailed` — the state the dock needs to keep the bar (with its
-    /// Refresh affordance) visible: the stream played and died, and a manual
-    /// refetch is now the user's only lever. Deliberately does NOT tear the
-    /// player down: `currentStream` must survive so the bar can name the
-    /// stream the Refresh button applies to.
-    private func giveUpOnPlayback(_ stream: Stream, reason: String) {
-        isFailed = true
-        statusText = reason
-        isPlaying = false
-        nowPlaying.clear()
-        if stream.type == .channel {
-            let page = stream.pageUrl ?? stream.url
-            if let url = URL(string: page), !StreamStore.refuseTainted(page, pageUrl: nil) {
-                openInBrowserURL = url
-                statusText = "Open in browser"
-            }
-        }
+        failPlayback(stream, reason: "Failed")
     }
 
     private func updateStatusText() {

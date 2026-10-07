@@ -226,18 +226,27 @@ struct ContentView: View {
                 ) {
                     VideoPanel(manager: manager, videoMode: $videoMode)
                     PlayerBar(manager: manager, showsTransport: true)
-                } else if manager.isPlaying {
-                    PlayerBar(manager: manager)
-                } else if manager.isFailed {
-                    // The stream played and died for good (recovery budget spent).
-                    // The bar MUST stay here: this is the one state where the user
-                    // needs it most — it carries the honest "Failed" line, a Play
-                    // that retries from scratch with a fresh budget, Stop to clear
-                    // it, and the Refresh button when the stream has a source page.
-                    // (`isPlaying` alone can't express this: a paused stream is
-                    // also not playing, and the audio bar has always hidden itself
-                    // on pause — this keeps that behaviour byte-identical.)
-                    PlayerBar(manager: manager, showsTransport: true)
+                } else if PlayerBarPolicy.shouldShowBar(
+                    isPlaying: manager.isPlaying,
+                    isFailed: manager.isFailed
+                ) {
+                    // Either something is playing (the bar it always was) or the
+                    // stream died for good. The failed case MUST stay here: it is
+                    // the one state where the user needs the bar most — it carries
+                    // the honest "Failed"/"Open in browser" line, a Play that
+                    // retries from scratch with a fresh budget, Stop to clear it,
+                    // and the Refresh button whenever the stream has a source page.
+                    // Before this policy existed, a link that never started playing
+                    // satisfied neither branch and the bar vanished with Refresh
+                    // inside it ("i dont see the refresh stream if the link is
+                    // broken"). `isPlaying` alone can't express the dead case: a
+                    // paused stream is also not playing, and the audio bar has
+                    // always hidden itself on pause — this keeps that byte-identical.
+                    PlayerBar(manager: manager,
+                              showsTransport: PlayerBarPolicy.showsTransport(
+                                isPlaying: manager.isPlaying,
+                                isFailed: manager.isFailed
+                              ))
                 }
             }
         }
@@ -334,11 +343,12 @@ private struct PlayerBar: View {
             Spacer()
             // Manual refetch-from-source (port of the macOS Refresh button in
             // PlayerControlCard). Shown only when a refresh is even possible —
-            // the machine's `canRefresh` rule, so the bar never offers a button
-            // that would just refuse. Taps are deliberately unbounded (the
-            // budget only caps *automatic* refetches); while one is in flight
-            // the button is a spinner, mirroring macOS.
-            if let stream, RefetchMachine.canRefresh(stream) {
+            // `PlayerBarPolicy.shouldOfferRefresh`, i.e. the machine's
+            // `canRefresh` rule, so the bar never offers a button that would
+            // just refuse. Taps are deliberately unbounded (the budget only
+            // caps *automatic* refetches); while one is in flight the button is
+            // a spinner, mirroring macOS.
+            if let stream, PlayerBarPolicy.shouldOfferRefresh(stream) {
                 Button {
                     manager.player.refreshFromSource(stream, manual: true)
                 } label: {

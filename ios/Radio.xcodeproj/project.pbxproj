@@ -21,6 +21,7 @@
 		9673A13FE3EA3AD04075CAE4 /* PlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6667DFCFD315B9842A8F446E /* PlayerManager.swift */; };
 		98D30DE33D0D4718FBD0D8D3 /* URLResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E7E43CE638D6A78A5CFD73 /* URLResolver.swift */; };
 		A2E26CD0612A8BEF44A9470F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D087376958BC2DFA13D92BC /* ContentView.swift */; };
+		A668B39D42FCE5F637D262C8 /* BrokenLinkRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DD27C54C856C9F0CF78B9E6 /* BrokenLinkRefreshTests.swift */; };
 		A75A9B7DC7CF1EE6A5BF0CC8 /* StreamStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52ED8115F84C1DE229FC06C /* StreamStore.swift */; };
 		AC07081EDF2AB67EFF6EBD83 /* VideoFullscreenPiPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81698D1C912AFD96176673B8 /* VideoFullscreenPiPTests.swift */; };
 		ACE47431C8AC72476E194353 /* VideoFullscreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A377F42AC8B079CA54DF5AD /* VideoFullscreenUITests.swift */; };
@@ -31,6 +32,7 @@
 		CA354657A65EC89C6616A869 /* ChannelResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E447DF05519267E103F32060 /* ChannelResolver.swift */; };
 		CB1F2DF984872BF1CB5D4F67 /* RefetchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D428B0BE49705EF792261A4D /* RefetchTests.swift */; };
 		D1C76960E61FAAD876FA9F30 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */; };
+		D547561D63D11B6C7E7ECE19 /* PlayerBarPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917C90BFB6DB898BB5FE4DC2 /* PlayerBarPolicy.swift */; };
 		DF9BC60DE2253221D74538C9 /* RefetchPlayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23131E43225160C7798C2B1D /* RefetchPlayerTests.swift */; };
 		E0510A33EB25027F345BD066 /* VideoSurfaceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */; };
 		E09FAC23719DBA0C042364BE /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD69118C654D6B3BE0F91293 /* CarPlaySceneDelegate.swift */; };
@@ -75,7 +77,9 @@
 		81C0903AC6C3129100D7414E /* AddStreamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStreamSheet.swift; sourceTree = "<group>"; };
 		8A605F49F29EC3611BE494C4 /* AirPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlay.swift; sourceTree = "<group>"; };
 		901C24BADDC23DCE2E11D16C /* RadioUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RadioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		917C90BFB6DB898BB5FE4DC2 /* PlayerBarPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerBarPolicy.swift; sourceTree = "<group>"; };
 		9A377F42AC8B079CA54DF5AD /* VideoFullscreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFullscreenUITests.swift; sourceTree = "<group>"; };
+		9DD27C54C856C9F0CF78B9E6 /* BrokenLinkRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrokenLinkRefreshTests.swift; sourceTree = "<group>"; };
 		9DF86C2D279A6ABDE1ADD109 /* VideoSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurface.swift; sourceTree = "<group>"; };
 		9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayAppDelegate.swift; sourceTree = "<group>"; };
 		A88A9F4D6D114C8D76572F9B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -109,6 +113,7 @@
 		4E73B44FB6B6011D06A9DDEA /* RadioTests */ = {
 			isa = PBXGroup;
 			children = (
+				9DD27C54C856C9F0CF78B9E6 /* BrokenLinkRefreshTests.swift */,
 				AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */,
 				B6197E8786DD7C1FA4375EBF /* NowPlayingInfoTests.swift */,
 				23131E43225160C7798C2B1D /* RefetchPlayerTests.swift */,
@@ -153,6 +158,7 @@
 				A88A9F4D6D114C8D76572F9B /* Info.plist */,
 				0F0D00042749667FA6407BCC /* NowPlaying.swift */,
 				EC075B35FEF20313AF96F4B2 /* PictureInPicture.swift */,
+				917C90BFB6DB898BB5FE4DC2 /* PlayerBarPolicy.swift */,
 				6667DFCFD315B9842A8F446E /* PlayerManager.swift */,
 				AE44FE6131A38B173B3C3171 /* QRScannerController.swift */,
 				5E003833D145A418C5E884ED /* QRScanSession.swift */,
@@ -294,6 +300,7 @@
 				D1C76960E61FAAD876FA9F30 /* DeepLinkHandler.swift in Sources */,
 				B1FA0D274BB99EEE5A1E5D84 /* NowPlaying.swift in Sources */,
 				2B04A0F2C82F3C3AC15EFB0A /* PictureInPicture.swift in Sources */,
+				D547561D63D11B6C7E7ECE19 /* PlayerBarPolicy.swift in Sources */,
 				9673A13FE3EA3AD04075CAE4 /* PlayerManager.swift in Sources */,
 				E0A277D42F1AC3A25DE863C4 /* QRScanSession.swift in Sources */,
 				2EC04D7A9E768A111573A775 /* QRScanView.swift in Sources */,
@@ -313,6 +320,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A668B39D42FCE5F637D262C8 /* BrokenLinkRefreshTests.swift in Sources */,
 				AF2C6A2A82C006045F7EBFEE /* ChannelResolverTests.swift in Sources */,
 				F84A0C7ED00E7D05B13E378C /* NowPlayingInfoTests.swift in Sources */,
 				DF9BC60DE2253221D74538C9 /* RefetchPlayerTests.swift in Sources */,
