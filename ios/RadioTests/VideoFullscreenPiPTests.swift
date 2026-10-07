@@ -160,6 +160,32 @@ final class VideoFullscreenPiPTests: XCTestCase {
         XCTAssertNil(player.currentStream, "closing the floating window must end the stream")
     }
 
+    /// The loop guard, testable without AVKit: `stopSession()` is what
+    /// `StreamPlayer.teardownPlayback` calls on EVERY teardown (Stop, stream
+    /// switch). If it fired `onClose` — which is wired to `stop()` — then stop
+    /// would re-enter stop, and worse, a STREAM SWITCH would call stop() on the
+    /// stream the user just started. Only the floating window's own close (the
+    /// restore callback) may end playback.
+    @MainActor
+    func testStopSessionDoesNotFireClose() {
+        let player = StreamPlayer()
+        let realClose = player.pip.onClose   // the wiring this test must not break
+        var closes = 0
+        player.pip.onClose = { closes += 1 }
+
+        player.pip.stopSession()
+        player.pip.unbind()
+        XCTAssertEqual(closes, 0,
+                       "an app-initiated stop fired the close rule — teardown would re-enter stop()")
+
+        // Restore the player's own wiring and check the user path really does end
+        // playback (a spy alone would pass even if the real rule were missing).
+        player.pip.onClose = realClose
+        player.play(stream(.video))
+        player.pip.onClose?()
+        XCTAssertFalse(player.isPlaying, "the user-close path must still stop playback")
+    }
+
     /// The session must be the PLAYER's — one floating-window controller for the
     /// app's single stream — and it must survive a stop so a later video can
     /// re-bind it. If the view made its own session, two PiP controllers could

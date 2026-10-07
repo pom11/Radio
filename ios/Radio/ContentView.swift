@@ -20,21 +20,33 @@ struct ContentView: View {
     /// dock — which a view nested inside the dock structurally cannot do.
     @State private var videoMode: VideoSurfaceMode = .docked
 
+    /// Whether the fullscreen picture is on screen right now — the user's
+    /// request (`videoMode`) AND a picture that still exists.
+    ///
+    /// Requiring BOTH is what keeps a fullscreen overlay from ever outliving its
+    /// stream (Stop, a stream that failed for good, a switch to audio): an
+    /// overlay over a black screen with nothing playing is the ghost-card bug in
+    /// fullscreen form, and a derived condition cannot be forgotten the way a
+    /// hand-written reset can.
+    ///
+    /// The dock reads this too, so while the overlay is up the docked bar is not
+    /// mounted at all: it is fully covered, and leaving it in the tree would put
+    /// a SECOND pair of Pause/Stop buttons in the accessibility tree — ambiguous
+    /// for VoiceOver (two things saying "Pause", one of them untappable) and for
+    /// XCUITest (`app.buttons["Pause"].tap()` errors on a multi-match). The
+    /// overlay carries the transport in fullscreen, so nothing is lost.
+    private var isFullscreenVisible: Bool {
+        videoMode.isFullscreen
+            && VideoSurfacePolicy.shouldShow(
+                currentStream: manager.currentStream,
+                hasPlayer: manager.player.avPlayer != nil
+            )
+    }
+
     var body: some View {
         ZStack {
             mainScene
-            // `videoMode` says what the user asked for; the policy says whether
-            // there is still a picture to show. Requiring BOTH is what keeps a
-            // fullscreen overlay from ever outliving its stream (Stop, a stream
-            // that failed for good, a switch to audio) — an overlay over a black
-            // screen with nothing playing is the ghost-card bug in fullscreen
-            // form, and a derived condition cannot be forgotten the way a
-            // hand-written reset can.
-            if videoMode.isFullscreen,
-               VideoSurfacePolicy.shouldShow(
-                    currentStream: manager.currentStream,
-                    hasPlayer: manager.player.avPlayer != nil
-               ) {
+            if isFullscreenVisible {
                 VideoFullscreenOverlay(manager: manager, videoMode: $videoMode)
                     .ignoresSafeArea()
                     .transition(.opacity)
@@ -196,25 +208,37 @@ struct ContentView: View {
     /// first.
     @ViewBuilder
     private var bottomDock: some View {
-        VStack(spacing: 0) {
-            if VideoSurfacePolicy.shouldShow(
-                currentStream: manager.currentStream,
-                hasPlayer: manager.player.avPlayer != nil
-            ) {
-                VideoPanel(manager: manager, videoMode: $videoMode)
-                PlayerBar(manager: manager, showsTransport: true)
-            } else if manager.isPlaying {
-                PlayerBar(manager: manager)
-            } else if manager.isFailed {
-                // The stream played and died for good (recovery budget spent).
-                // The bar MUST stay here: this is the one state where the user
-                // needs it most — it carries the honest "Failed" line, a Play
-                // that retries from scratch with a fresh budget, Stop to clear
-                // it, and the Refresh button when the stream has a source page.
-                // (`isPlaying` alone can't express this: a paused stream is
-                // also not playing, and the audio bar has always hidden itself
-                // on pause — this keeps that behaviour byte-identical.)
-                PlayerBar(manager: manager, showsTransport: true)
+        // The fullscreen overlay covers the whole window and carries its own
+        // transport, so while it is up the dock is not mounted at all. Two
+        // reasons, one UX one testing: VoiceOver would otherwise find a SECOND
+        // pair of Pause/Stop (one untappable under the overlay), and XCUITest's
+        // `app.buttons["Pause"]` errors on such a multi-match. Unmounting is
+        // also what leaves exactly one VideoSurface on screen, hence exactly
+        // one legitimate owner of the PiP layer. (AirPlay/Refresh live only on
+        // the bar and are unreachable in fullscreen — the same trade every
+        // fullscreen video UI makes, and the overlay's own controls cover the
+        // card's requirement: pause, stop, collapse.)
+        if !isFullscreenVisible {
+            VStack(spacing: 0) {
+                if VideoSurfacePolicy.shouldShow(
+                    currentStream: manager.currentStream,
+                    hasPlayer: manager.player.avPlayer != nil
+                ) {
+                    VideoPanel(manager: manager, videoMode: $videoMode)
+                    PlayerBar(manager: manager, showsTransport: true)
+                } else if manager.isPlaying {
+                    PlayerBar(manager: manager)
+                } else if manager.isFailed {
+                    // The stream played and died for good (recovery budget spent).
+                    // The bar MUST stay here: this is the one state where the user
+                    // needs it most — it carries the honest "Failed" line, a Play
+                    // that retries from scratch with a fresh budget, Stop to clear
+                    // it, and the Refresh button when the stream has a source page.
+                    // (`isPlaying` alone can't express this: a paused stream is
+                    // also not playing, and the audio bar has always hidden itself
+                    // on pause — this keeps that behaviour byte-identical.)
+                    PlayerBar(manager: manager, showsTransport: true)
+                }
             }
         }
     }
@@ -382,21 +406,34 @@ private struct VideoPanel: View {
         ZStack(alignment: .topTrailing) {
             VideoSurface(player: manager.player.avPlayer,
                          label: "Video for \(manager.currentStream?.name ?? "stream")",
-                         // Exactly ONE surface may bind the PiP session at a
-                         // time. This panel stays mounted (and still drawing,
-                         // just occluded) while the fullscreen overlay is up, so
-                         // handing the session to both would make the floating
-                         // window's source depend on which view updated last.
-                         pip: videoMode.isFullscreen ? nil : manager.player.pip)
+                         // The dock does not mount this panel while the
+                         // fullscreen overlay is up (see `isFullscreenVisible`),
+                         // so exactly one surface ever binds the session and the
+                         // floating window's source is never a race between two
+                         // views that are both on screen.
+                         pip: manager.player.pip)
                 .aspectRatio(VideoSurfacePolicy.aspectRatio, contentMode: .fit)
                 .frame(maxWidth: .infinity)
+                // The picture wins the full width against the control overlay.
+                // A ZStack splits width between two children whose width
+                // requirements conflict (the 16:9 panel wants the whole width,
+                // the button row wants to hug the trailing edge), and without a
+                // priority the panel used to get less than it asked for — the
+                // "surface exists but has no width" case VideoSurfaceUITests
+                // guards. layoutPriority costs nothing when there is no overlay.
+                .layoutPriority(1)
                 .background(Color.black)
 
             // Controls float over the picture's top-right corner: the panel is
             // short (16:9 full-width) and a bar below the picture would push the
             // dock taller than the panel is worth.
             HStack(spacing: 4) {
-                PiPControlButton(session: manager.player.pip)
+                if VideoSurfacePolicy.shouldOfferPiP(
+                    currentStream: manager.currentStream,
+                    hasPlayer: manager.player.avPlayer != nil
+                ) {
+                    PiPControlButton(session: manager.player.pip)
+                }
                 Button {
                     videoMode = VideoSurfaceMode.transition(from: videoMode, action: .expand)
                 } label: {
@@ -449,10 +486,11 @@ private struct VideoFullscreenOverlay: View {
                     .transition(.opacity)
             }
         }
-        // A tap anywhere on the picture toggles the chrome — the "controls
-        // overlay on tap, auto-hide ok" the card asked for. The buttons
-        // themselves win the tap (they are on top), so this only fires on the
-        // video itself.
+        // A tap on the picture brings the chrome back — the "controls overlay on
+        // tap, auto-hide ok" the card asked for. Deliberately reveal-only, not a
+        // toggle: a toggle could hide the chrome exactly when a tap landed during
+        // the fade-in, which is a flake (and an annoyance) for no user gain —
+        // the chrome already hides itself after a few seconds.
         .contentShape(Rectangle())
         .onTapGesture { revealControls() }
         .onAppear { revealControls() }

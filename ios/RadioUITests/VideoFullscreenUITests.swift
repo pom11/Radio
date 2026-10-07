@@ -187,18 +187,25 @@ final class VideoFullscreenUITests: XCTestCase {
     /// "Stop Picture in Picture" only while a session is active, which no test
     /// here starts).
     private var pipButton: XCUIElement { app.buttons["Picture in Picture"] }
+    /// The way out of fullscreen (label set in VideoFullscreenOverlay).
+    private var collapseButton: XCUIElement { app.buttons["Collapse video"] }
 
-    /// Bring the fullscreen chrome back.
+    /// Bring the fullscreen chrome back, the way a user does — tap the picture.
     ///
-    /// The overlay auto-hides its controls a few seconds after the last tap, so a
-    /// test that spent time on assertions has to tap the picture itself — exactly
-    /// what a user does. No-op when the chrome is already up.
-    private func revealChrome() {
-        let collapse = app.buttons["Collapse video"]
-        if collapse.isHittable { return }
-        let full = app.otherElements["videoFullscreen"]
-        if full.exists { full.tap() }
-        _ = collapse.waitForExistence(timeout: 3)
+    /// The overlay auto-hides its controls a few seconds after the last
+    /// interaction, so a test that spent time on geometry assertions has to
+    /// re-reveal them. Tries three times (the card's "3 tries, then skip") and
+    /// reports whether it worked, so the caller can SKIP the chrome-dependent
+    /// part instead of failing red on an animation-timing race.
+    @discardableResult
+    private func revealChrome() -> Bool {
+        for _ in 0..<3 {
+            if collapseButton.isHittable { return true }
+            let full = app.otherElements["videoFullscreen"]
+            if full.exists { full.tap() }
+            if collapseButton.waitForExistence(timeout: 3) { return collapseButton.isHittable }
+        }
+        return collapseButton.isHittable
     }
 
     /// Add a stream through the real + sheet, so the test goes through the same

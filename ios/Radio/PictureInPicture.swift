@@ -2,7 +2,6 @@ import AVFoundation
 import AVKit
 import Combine
 import os.log
-import UIKit
 
 private let log = Logger(subsystem: "ro.pom.radio.ios", category: "pip")
 
@@ -51,6 +50,12 @@ final class PiPSession: NSObject, ObservableObject, AVPictureInPictureController
     static var isSupported: Bool { AVPictureInPictureController.isPictureInPictureSupported() }
 
     private var controller: AVPictureInPictureController?
+    /// True for the duration of an app-initiated `stopPictureInPicture()`.
+    /// AVKit may call `restoreUserInterfaceForPiPStop` for a stop the app asked
+    /// for (teardown, stream switch, entering fullscreen); that is NOT the user
+    /// closing the window, and treating it as such would route a stop we caused
+    /// back into `StreamPlayer.stop()`. See `stopSession()`.
+    private var stoppingByApp = false
     /// The pair currently bound, kept so a repeat `bind` (every SwiftUI redraw)
     /// is a no-op instead of a session re-creation — recreating mid-playback
     /// would tear the floating window down.
@@ -97,22 +102,42 @@ final class PiPSession: NSObject, ObservableObject, AVPictureInPictureController
         refreshPossible()
     }
 
-    /// The panel's PiP button.
+    /// The panel's PiP button: opens the window, or closes it if it is already
+    /// up (so the same control is a toggle and the user is never stuck).
+    ///
+    /// Closing it from HERE does NOT end playback — `stopSession()` marks the
+    /// stop app-initiated and the user is standing right in front of the inline
+    /// video with the normal controls. Card rule C ("close stops playback like
+    /// Stop") is about the FLOATING WINDOW's own close button, which has no
+    /// controls around it; that path is the restore callback below.
     func start() {
         guard let controller else { return }
         if controller.isPictureInPictureActive {
-            controller.stopPictureInPicture()
+            stopSession()
         } else {
+            // An unambiguous user intent to open: any earlier app-initiated stop
+            // is history, so a later restore callback belongs to THIS session.
+            stoppingByApp = false
             controller.startPictureInPicture()
         }
     }
 
     /// End the floating window WITHOUT implying anything about playback.
-    /// `teardownPlayback` calls this before the layer disappears, so a stream
-    /// switch or Stop never leaves a window drawing from a dead player.
+    /// `teardownPlayback` calls this before the player goes away, so a stream
+    /// switch or Stop never leaves a window drawing from a dead player. (While
+    /// fullscreen is up the overlay's own surface re-binds the session, so
+    /// entering fullscreen needs no call here.)
+    ///
+    /// The `stoppingByApp` flag is what keeps card rule C honest in the other
+    /// direction: AVKit may deliver `restoreUserInterfaceForPiPStop` for stops
+    /// the APP asked for, and treating one as "the user closed the window"
+    /// would re-enter `stop()` from inside `stop()` (and, on a stream switch,
+    /// would kill the stream the user just started). Only a close the system
+    /// initiated — the window's own X — reaches `onClose`.
     func stopSession() {
         guard let controller else { return }
         if controller.isPictureInPictureActive || controller.isPictureInPictureSuspended {
+            stoppingByApp = true
             controller.stopPictureInPicture()
         }
         isActive = false
@@ -152,6 +177,7 @@ final class PiPSession: NSObject, ObservableObject, AVPictureInPictureController
 
     func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         log.info("PiP stopped")
+        stoppingByApp = false
         onMain { [weak self] in self?.refreshPossible() }
     }
 
@@ -163,20 +189,25 @@ final class PiPSession: NSObject, ObservableObject, AVPictureInPictureController
     }
 
     /// The system is about to stop the window and is asking the app to show its
-    /// UI. Two jobs, in this order:
+    /// UI. Two cases, and they must not be conflated:
     ///
-    /// 1. end the stream (card rule C — closing the floating window stops
-    ///    playback exactly like Stop does);
-    /// 2. answer the restore request with `true`. There is nothing to restore:
-    ///    the video is inline in the app's single window (no modal player
-    ///    screen, no separate detail view), so the UI the user lands on is
-    ///    already the right one. iOS also has no public "bring my app forward"
-    ///    call — the system performs the foreground switch itself — so claiming
-    ///    otherwise here would be fiction, not a fix.
+    /// - A stop WE asked for (`stopSession()` — Stop, stream switch, entering
+    ///   fullscreen). Playback is already being handled by whoever asked; firing
+    ///   `onClose` here would call `stop()` again from inside `stop()`, and on a
+    ///   stream switch would kill the stream the user just started.
+    /// - A stop the USER caused — tapping the window's X, or dismissing it.
+    ///   That is card rule C: end playback exactly like the Stop button does.
     ///
-    /// `stop()` in step 1 stops the session too, which is what the system is
-    /// already doing here — idempotent, not a loop.
+    /// Then answer the restore request with `true`: there is nothing to restore,
+    /// the video is inline in the app's single window (no modal player screen),
+    /// so the UI the user lands on is already the right one. iOS also has no
+    /// public "bring my app forward" call — the system performs the foreground
+    /// switch itself — so claiming otherwise here would be fiction, not a fix.
     func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
+        if stoppingByApp {
+            completionHandler(true)
+            return
+        }
         onMain { [weak self] in self?.onClose?() }
         completionHandler(true)
     }
