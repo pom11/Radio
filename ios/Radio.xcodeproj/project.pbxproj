@@ -23,6 +23,7 @@
 		A2E26CD0612A8BEF44A9470F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D087376958BC2DFA13D92BC /* ContentView.swift */; };
 		A75A9B7DC7CF1EE6A5BF0CC8 /* StreamStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52ED8115F84C1DE229FC06C /* StreamStore.swift */; };
 		AC07081EDF2AB67EFF6EBD83 /* VideoFullscreenPiPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81698D1C912AFD96176673B8 /* VideoFullscreenPiPTests.swift */; };
+		ACE47431C8AC72476E194353 /* VideoFullscreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A377F42AC8B079CA54DF5AD /* VideoFullscreenUITests.swift */; };
 		AF2C6A2A82C006045F7EBFEE /* ChannelResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */; };
 		AF2FEEA4A8EF04B2A418EC17 /* Stream.swift in Sources */ = {isa = PBXBuildFile; fileRef = C766C15FBAA661D54E2AB439 /* Stream.swift */; };
 		B1FA0D274BB99EEE5A1E5D84 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F0D00042749667FA6407BCC /* NowPlaying.swift */; };
@@ -74,6 +75,7 @@
 		81C0903AC6C3129100D7414E /* AddStreamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStreamSheet.swift; sourceTree = "<group>"; };
 		8A605F49F29EC3611BE494C4 /* AirPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlay.swift; sourceTree = "<group>"; };
 		901C24BADDC23DCE2E11D16C /* RadioUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RadioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A377F42AC8B079CA54DF5AD /* VideoFullscreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFullscreenUITests.swift; sourceTree = "<group>"; };
 		9DF86C2D279A6ABDE1ADD109 /* VideoSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurface.swift; sourceTree = "<group>"; };
 		9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayAppDelegate.swift; sourceTree = "<group>"; };
 		A88A9F4D6D114C8D76572F9B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -132,6 +134,7 @@
 			isa = PBXGroup;
 			children = (
 				482B8248BFCAAF94702A1F57 /* RefetchUITests.swift */,
+				9A377F42AC8B079CA54DF5AD /* VideoFullscreenUITests.swift */,
 				2A213A23E8A968A94A34013C /* VideoSurfaceUITests.swift */,
 			);
 			path = RadioUITests;
@@ -273,6 +276,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A51BDB46F8C2EC2C60CD07F /* RefetchUITests.swift in Sources */,
+				ACE47431C8AC72476E194353 /* VideoFullscreenUITests.swift in Sources */,
 				E0510A33EB25027F345BD066 /* VideoSurfaceUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
