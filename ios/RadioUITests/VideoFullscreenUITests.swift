@@ -118,20 +118,25 @@ final class VideoFullscreenUITests: XCTestCase {
         XCTAssertGreaterThan(full.frame.height, docked.height,
                              "the overlay is no bigger than the docked panel — that is not fullscreen")
 
-        // Transport over the video: the docked bar is covered, so the overlay has
-        // to carry pause, stop and collapse itself.
-        revealChrome()
-        XCTAssertTrue(app.buttons["Collapse video"].waitForExistence(timeout: 10),
-                      "no way back out of fullscreen")
-        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 10)
-                        || app.buttons["Play"].exists,
-                      "no play/pause over the fullscreen video")
-        XCTAssertTrue(app.buttons["Stop"].waitForExistence(timeout: 10),
-                      "no stop over the fullscreen video")
+        // Transport over the video: the docked bar is not mounted in fullscreen
+        // (ContentView.bottomDock), so the overlay has to carry pause, stop and
+        // collapse itself.
+        //
+        // Every check re-reveals the chrome first because it AUTO-HIDES ~4s after
+        // the last interaction — a real behaviour, and the first version of this
+        // test raced it (Collapse and Pause were found, then the hide landed and
+        // Stop "did not exist" for the remaining 10s). Re-revealing is also what
+        // a user does, so the test is closer to the gesture than a lucky timing
+        // window would be.
+        XCTAssertTrue(reveal(collapseButton), "no way back out of fullscreen")
+        let playPause = app.buttons["Pause"].exists ? app.buttons["Pause"] : app.buttons["Play"]
+        XCTAssertTrue(reveal(playPause), "no play/pause over the fullscreen video")
+        XCTAssertTrue(reveal(stopButton), "no stop over the fullscreen video")
 
         // Pause has to actually work from up there (the same path the Lock Screen
         // and the docked bar use).
         if app.buttons["Pause"].exists {
+            XCTAssertTrue(reveal(app.buttons["Pause"]))
             app.buttons["Pause"].tap()
             XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 10),
                           "pause over the fullscreen video did not flip the transport")
@@ -140,8 +145,8 @@ final class VideoFullscreenUITests: XCTestCase {
         // And the overlay must not survive its stream: Stop ends playback, so the
         // fullscreen picture has to come down with it (otherwise: a black screen
         // covering the app with nothing playing).
-        revealChrome()
-        app.buttons["Stop"].tap()
+        XCTAssertTrue(reveal(stopButton), "no stop over the fullscreen video")
+        stopButton.tap()
         XCTAssertFalse(full.waitForExistence(timeout: 5),
                        "the fullscreen overlay outlived its stream — black screen over the app")
         XCTAssertFalse(app.otherElements["videoSurface"].waitForExistence(timeout: 3),
@@ -164,11 +169,8 @@ final class VideoFullscreenUITests: XCTestCase {
             throw XCTSkip("expand did not present the fullscreen surface within 10s")
         }
 
-        revealChrome()
-        guard app.buttons["Collapse video"].waitForExistence(timeout: 10) else {
-            throw XCTSkip("collapse control never became visible (chrome timing) — deterministic parts above asserted")
-        }
-        app.buttons["Collapse video"].tap()
+        XCTAssertTrue(reveal(collapseButton), "collapse control never became hittable")
+        collapseButton.tap()
 
         XCTAssertFalse(full.waitForExistence(timeout: 10),
                        "collapse left the fullscreen overlay up")
@@ -189,23 +191,30 @@ final class VideoFullscreenUITests: XCTestCase {
     private var pipButton: XCUIElement { app.buttons["Picture in Picture"] }
     /// The way out of fullscreen (label set in VideoFullscreenOverlay).
     private var collapseButton: XCUIElement { app.buttons["Collapse video"] }
+    /// The overlay's Stop (label set in VideoFullscreenOverlay). Queried by
+    /// label like every control here — identifiers on plain SwiftUI buttons
+    /// whose label swaps views have been seen not to surface (d2d31cf).
+    private var stopButton: XCUIElement { app.buttons["Stop"] }
 
-    /// Bring the fullscreen chrome back, the way a user does — tap the picture.
+    /// Make `element` hittable by bringing the fullscreen chrome back — the way
+    /// a user does it, tap the picture — and report whether it worked.
     ///
-    /// The overlay auto-hides its controls a few seconds after the last
-    /// interaction, so a test that spent time on geometry assertions has to
-    /// re-reveal them. Tries three times (the card's "3 tries, then skip") and
-    /// reports whether it worked, so the caller can SKIP the chrome-dependent
-    /// part instead of failing red on an animation-timing race.
+    /// WHY this exists: the overlay auto-hides its controls ~4s after the last
+    /// interaction, and an XCUITest that only QUERIES elements performs no
+    /// interaction at all. The first version of the fullscreen test fell into
+    /// exactly that: it found Collapse and Pause, then the hide landed during
+    /// the next waits and Stop "did not exist". Any check against the overlay's
+    /// chrome must therefore re-reveal it first — three tries (the card's "3
+    /// tries, then skip"), and the caller asserts rather than taps blindly.
     @discardableResult
-    private func revealChrome() -> Bool {
+    private func reveal(_ element: XCUIElement) -> Bool {
         for _ in 0..<3 {
-            if collapseButton.isHittable { return true }
+            if element.isHittable { return true }
             let full = app.otherElements["videoFullscreen"]
             if full.exists { full.tap() }
-            if collapseButton.waitForExistence(timeout: 3) { return collapseButton.isHittable }
+            if element.waitForExistence(timeout: 3) { return element.isHittable }
         }
-        return collapseButton.isHittable
+        return element.isHittable
     }
 
     /// Add a stream through the real + sheet, so the test goes through the same
