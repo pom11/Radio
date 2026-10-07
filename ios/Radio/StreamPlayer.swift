@@ -55,6 +55,18 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     /// url — same contract as the macOS `onRefreshStream`.
     var onRefreshStream: ((Stream) -> Void)?
 
+    /// The floating-picture-in-picture window for a video stream.
+    ///
+    /// Lives as long as the player (one session object for the app's single
+    /// stream), but is only ever *bound* — pointed at an AVPlayerLayer — while a
+    /// video surface is mounted (see VideoSurface.updateUIView). An audio stream
+    /// therefore never has a session to offer: there is no picture to float.
+    ///
+    /// Owned here rather than by the view because closing the window has to end
+    /// playback through the SAME path the Stop button uses, so `isPlaying`,
+    /// statusText and the now-playing card cannot drift from reality.
+    let pip = PiPSession()
+
     /// The refetch state machine: re-entrancy guard + auto budget + taint rule.
     /// Pure (no async, no I/O) — the decisions live in RefetchMachine so
     /// RadioTests can drive them; this class only owns the task plumbing.
@@ -86,6 +98,12 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     override init() {
         super.init()
         nowPlaying.delegate = self
+        // Closing the floating window ends the stream (card rule C: "PiP
+        // stop/close stops playback like Stop does"). `stop()` is the same call
+        // the bar's Stop button makes, so the now-playing card, isPlaying and
+        // statusText all follow it. weak-self: the session is owned by this
+        // object, so a strong closure here would be a retain cycle.
+        pip.onClose = { [weak self] in self?.stop() }
     }
 
     /// Resolve a Stream to a playable URL string.
@@ -306,6 +324,12 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
         playTask = nil
         isFailed = false   // a new stream is a clean slate; failure is per-stream
         cancellables.removeAll()
+        // The floating window draws from the layer of the player being torn
+        // down. Stopping it BEFORE the player goes away makes the close orderly
+        // (and `stopSession` is a no-op when nothing is active, so audio streams
+        // and the very common "never opened PiP" path cost nothing here).
+        pip.stopSession()
+        pip.unbind()
         avPlayer?.pause()
         avPlayer?.replaceCurrentItem(with: nil)
         avPlayer = nil

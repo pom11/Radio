@@ -14,8 +14,51 @@ struct ContentView: View {
     @State private var safariURL: URL?
     /// Tracks the player's current open-in-browser offer so we can prompt.
     @State private var offeredOpenInBrowser: URL?
+    /// Where the picture is drawn: docked above the player bar, or filling the
+    /// whole screen. Owned here (not by the panel) because the fullscreen
+    /// overlay has to cover the whole window — including this view's bottom
+    /// dock — which a view nested inside the dock structurally cannot do.
+    @State private var videoMode: VideoSurfaceMode = .docked
 
     var body: some View {
+        ZStack {
+            mainScene
+            // `videoMode` says what the user asked for; the policy says whether
+            // there is still a picture to show. Requiring BOTH is what keeps a
+            // fullscreen overlay from ever outliving its stream (Stop, a stream
+            // that failed for good, a switch to audio) — an overlay over a black
+            // screen with nothing playing is the ghost-card bug in fullscreen
+            // form, and a derived condition cannot be forgotten the way a
+            // hand-written reset can.
+            if videoMode.isFullscreen,
+               VideoSurfacePolicy.shouldShow(
+                    currentStream: manager.currentStream,
+                    hasPlayer: manager.player.avPlayer != nil
+               ) {
+                VideoFullscreenOverlay(manager: manager, videoMode: $videoMode)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: videoMode)
+        // The flag itself is reset when the picture goes away, so the NEXT video
+        // starts docked rather than snapping back to fullscreen on its own. The
+        // derived condition above already protects the user; this keeps the
+        // intent honest. Two observers because either half can change last:
+        // @Published mutations inside one runloop turn can coalesce, in which
+        // case only the other signal still shows a difference.
+        .onChange(of: manager.player.avPlayer != nil) {
+            videoMode = VideoSurfaceMode.transition(from: videoMode, action: .stop)
+        }
+        .onChange(of: manager.currentStream?.type) {
+            videoMode = VideoSurfaceMode.transition(from: videoMode, action: .stop)
+        }
+    }
+
+    /// The stream list, its chrome, and the bottom dock — i.e. everything that
+    /// was `ContentView.body` before fullscreen existed. Split out so the
+    /// fullscreen overlay can sit ABOVE it in the ZStack rather than inside it.
+    private var mainScene: some View {
         NavigationStack {
             List {
                 if store.streams.isEmpty {
@@ -158,7 +201,7 @@ struct ContentView: View {
                 currentStream: manager.currentStream,
                 hasPlayer: manager.player.avPlayer != nil
             ) {
-                VideoPanel(manager: manager)
+                VideoPanel(manager: manager, videoMode: $videoMode)
                 PlayerBar(manager: manager, showsTransport: true)
             } else if manager.isPlaying {
                 PlayerBar(manager: manager)
@@ -320,7 +363,9 @@ private struct PlayerBar: View {
     }
 }
 
-/// The docked picture for a `.video` stream.
+/// The docked picture for a `.video` stream, with the two affordances the
+/// fullscreen/PiP card added: an expand arrow (the picture used to be hard-locked
+/// to this 16:9 box with no way out) and a PiP button.
 ///
 /// Size: 16:9 (`VideoSurfacePolicy.aspectRatio`) full-bleed width. AVPlayerLayer
 /// with `.resizeAspect` letterboxes anything else inside that box rather than
@@ -331,13 +376,178 @@ private struct PlayerBar: View {
 /// plain black, never a frozen frame of the stream that just ended).
 private struct VideoPanel: View {
     @ObservedObject var manager: PlayerManager
+    @Binding var videoMode: VideoSurfaceMode
 
     var body: some View {
-        VideoSurface(player: manager.player.avPlayer,
-                     label: "Video for \(manager.currentStream?.name ?? "stream")")
-            .aspectRatio(VideoSurfacePolicy.aspectRatio, contentMode: .fit)
-            .frame(maxWidth: .infinity)
-            .background(Color.black)
+        ZStack(alignment: .topTrailing) {
+            VideoSurface(player: manager.player.avPlayer,
+                         label: "Video for \(manager.currentStream?.name ?? "stream")",
+                         // Exactly ONE surface may bind the PiP session at a
+                         // time. This panel stays mounted (and still drawing,
+                         // just occluded) while the fullscreen overlay is up, so
+                         // handing the session to both would make the floating
+                         // window's source depend on which view updated last.
+                         pip: videoMode.isFullscreen ? nil : manager.player.pip)
+                .aspectRatio(VideoSurfacePolicy.aspectRatio, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .background(Color.black)
+
+            // Controls float over the picture's top-right corner: the panel is
+            // short (16:9 full-width) and a bar below the picture would push the
+            // dock taller than the panel is worth.
+            HStack(spacing: 4) {
+                PiPControlButton(session: manager.player.pip)
+                Button {
+                    videoMode = VideoSurfaceMode.transition(from: videoMode, action: .expand)
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                }
+                .accessibilityLabel("Expand video")
+                // Stable hook for the UI test — never rename it.
+                .accessibilityIdentifier("expandVideoButton")
+                .buttonStyle(VideoOverlayButtonStyle())
+            }
+            .padding(6)
+        }
+        .background(Color.black)
+    }
+}
+
+/// The fullscreen picture: the video fills the window edge to edge — under the
+/// status bar and the home indicator, black behind the letterbox bars — with the
+/// transport overlaid on tap.
+///
+/// Portrait-locked like the rest of the app: the card is explicit that this app
+/// (UIRequiresFullScreen, portrait arrays in Info.plist) must never ask the
+/// system to rotate. "Fullscreen" here means full *bounds*, not landscape; a
+/// 16:9 stream arrives looking right anyway because `.resizeAspect` centres it.
+///
+/// The overlay carries its own Pause/Play + Stop + PiP + collapse: while it is
+/// up, the docked bar below it is covered, so this is the only transport the
+/// user has (card requirement — pause, stop and collapse must be tappable over
+/// the video).
+private struct VideoFullscreenOverlay: View {
+    @ObservedObject var manager: PlayerManager
+    @Binding var videoMode: VideoSurfaceMode
+    /// The chrome hides itself a few seconds after the last tap, and any tap
+    /// brings it back. Starts visible: a user who just expanded must immediately
+    /// see how to get out.
+    @State private var controlsVisible = true
+    @State private var autoHideTask: Task<Void, Never>?
+
+    var body: some View {
+        ZStack {
+            Color.black
+
+            VideoSurface(player: manager.player.avPlayer,
+                         label: "Fullscreen video for \(manager.currentStream?.name ?? "stream")",
+                         identifier: "videoFullscreen",
+                         pip: manager.player.pip)
+
+            if controlsVisible {
+                controls
+                    .transition(.opacity)
+            }
+        }
+        // A tap anywhere on the picture toggles the chrome — the "controls
+        // overlay on tap, auto-hide ok" the card asked for. The buttons
+        // themselves win the tap (they are on top), so this only fires on the
+        // video itself.
+        .contentShape(Rectangle())
+        .onTapGesture { revealControls() }
+        .onAppear { revealControls() }
+        .onDisappear { autoHideTask?.cancel() }
+        .statusBarHidden(true)
+    }
+
+    private var controls: some View {
+        VStack {
+            HStack {
+                Spacer()
+                PiPControlButton(session: manager.player.pip)
+                Button {
+                    videoMode = VideoSurfaceMode.transition(from: videoMode, action: .collapse)
+                } label: {
+                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                }
+                .accessibilityLabel("Collapse video")
+                // Stable hook for the UI test — never rename it.
+                .accessibilityIdentifier("collapseVideoButton")
+                .buttonStyle(VideoOverlayButtonStyle())
+            }
+            .padding(.top, 8)
+
+            Spacer()
+
+            HStack(spacing: 20) {
+                Button {
+                    manager.player.nowPlayingTogglePlayback()
+                } label: {
+                    Image(systemName: manager.isPlaying ? "pause.fill" : "play.fill")
+                }
+                .accessibilityLabel(manager.isPlaying ? "Pause" : "Play")
+                .accessibilityIdentifier("fullscreenPlayPauseButton")
+                .buttonStyle(VideoOverlayButtonStyle())
+
+                Button {
+                    manager.stop()
+                } label: {
+                    Image(systemName: "stop.fill")
+                }
+                .accessibilityLabel("Stop")
+                .accessibilityIdentifier("fullscreenStopButton")
+                .buttonStyle(VideoOverlayButtonStyle())
+            }
+            .padding(.bottom, 24)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    /// Show the chrome and re-arm the auto-hide. Cancelling the previous task
+    /// first is what stops two scheduled hides racing each other.
+    private func revealControls() {
+        autoHideTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) { controlsVisible = true }
+        autoHideTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { controlsVisible = false }
+        }
+    }
+}
+
+/// The floating-window control, shared by the docked panel and the fullscreen
+/// overlay so both behave identically (icon, label, enable rule).
+///
+/// It exists for a video stream — `VideoSurfacePolicy.shouldOfferPiP` is what
+/// keeps it off the audio path entirely — and is disabled while the system says
+/// a session could not start, so the app never offers a dead button.
+private struct PiPControlButton: View {
+    @ObservedObject var session: PiPSession
+
+    var body: some View {
+        Button {
+            session.start()
+        } label: {
+            Image(systemName: session.isActive ? "pip.exit" : "pip.enter")
+        }
+        .disabled(!session.isActive && !session.canStart)
+        .accessibilityLabel(session.isActive ? "Stop Picture in Picture" : "Picture in Picture")
+        // Stable hook for the UI test — never rename it.
+        .accessibilityIdentifier("pipVideoButton")
+        .buttonStyle(VideoOverlayButtonStyle())
+    }
+}
+
+/// Circle-on-translucent-black: legible over any frame without hiding the
+/// picture behind a full bar.
+private struct VideoOverlayButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.title3)
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(.black.opacity(configuration.isPressed ? 0.65 : 0.45), in: Circle())
     }
 }
 
