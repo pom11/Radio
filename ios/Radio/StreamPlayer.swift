@@ -276,9 +276,9 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
     /// The four callers, all of which the user can hit with one broken link:
     /// the taint early-return in `play`, an unparseable resolved url,
     /// `handleResolveFailure` (nothing resolved / the resolver fell through to
-    /// the page), and `giveUpOnPlayback` (played, then the recovery budget ran
-    /// out). Before this existed only the last one set `isFailed`, which is why
-    /// a link that never started playing offered no Refresh at all.
+    /// the page), and `handlePlaybackFailure` (played, then the recovery budget
+    /// ran out). Before this existed only that last path set `isFailed`, which is
+    /// why a link that never started playing offered no Refresh at all.
     ///
     /// Deliberately does NOT tear the player down: `currentStream` must survive
     /// so the bar can name the stream the Refresh button applies to.
@@ -702,7 +702,7 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
                     // this ports from macOS) — try to recover: refetch a fresh
                     // URL from the source page if there is one, else retry the
                     // current URL within the shared auto budget. The "no card
-                    // for dead audio" rule is enforced by giveUpOnPlayback, the
+                    // for dead audio" rule is enforced by failPlayback, the
                     // honest end state the recovery funnels into when it runs
                     // out of attempts.
                     self.handlePlaybackFailure()

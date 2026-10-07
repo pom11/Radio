@@ -7,12 +7,13 @@ import XCTest
 /// Refresh lives only in the player bar, so the bar's mount rule IS the
 /// affordance's reach rule. The dock mounts the bar when the video surface is
 /// up, when `isPlaying`, or when `isFailed` — and before this card `isFailed`
-/// was set by exactly ONE path (`giveUpOnPlayback`, reached after the auto
-/// recovery budget was spent). The paths where playback *never even started*
-/// (resolve returned nothing, resolve fell through to the page, an unparseable
-/// url, the taint early-return) set `statusText` and `isPlaying = false` and
-/// left `isFailed` false → bar unmounted → the user's broken link had no
-/// Refresh anywhere, which is precisely the state that needs it.
+/// was set by exactly ONE path (the budget-exhausted end of `handlePlaybackFailure`,
+/// reached after the auto recovery budget was spent). The paths where playback
+/// *never even started* (resolve returned nothing, resolve fell through to the
+/// page, an unparseable url, the taint early-return) set `statusText` and
+/// `isPlaying = false` and left `isFailed` false → bar unmounted → the user's
+/// broken link had no Refresh anywhere, which is precisely the state that needs
+/// it.
 ///
 /// Two layers, because the complaint has two halves:
 /// - `PlayerBarPolicy` is the rule the dock and the bar's Refresh gate read,
