@@ -45,6 +45,30 @@ the live stream in Safari.
 - Resolution is best-effort and web content changes; a channel that used to
   embed a manifest may stop. On failure it always falls back to Open in Browser.
 
+## When a stream dies: Refresh and the source page
+
+A stream URL goes stale (proxy servers rotate, tokens expire). **Refresh**
+(the ↻ button in the player bar) re-scrapes a fresh playable URL from the
+stream's **source page** and, if the result verifies, saves it and replays.
+
+- Refresh is offered only when a source page exists, so the button never
+  appears on a stream that could only answer "No source page to refetch from".
+  For a `.channel` the source page *is* its `url`; for audio/video it is the
+  `pageUrl` recorded at import.
+- **A broken link always shows the bar**, so Refresh stays reachable: a stream
+  that played and died, and one whose URL never resolved at all, both keep the
+  bar with its honest status line, a retry, Stop — and Refresh where possible.
+  (A *paused* audio stream still hides the bar; that is by design.)
+- Automatic retries after a failure are capped (3 per playback) so a dead
+  stream cannot hammer its source page. Tapping Refresh yourself is never capped.
+
+**Recording the source page at import.** The add-sheet has an optional
+"Source page (for Refresh)" field. A manually-added audio or video stream with
+that field empty is refresh-less — the app will not invent a page out of a
+playable URL. Leave the field empty for a channel: its URL is the page, and it
+is recorded as such. QR/deep-link imports carry `pageUrl` when the macOS side
+had one.
+
 ## Building
 
 ```
