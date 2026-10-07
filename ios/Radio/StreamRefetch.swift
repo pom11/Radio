@@ -97,6 +97,33 @@ final class RefetchMachine {
         sourcePage(of: stream) != nil
     }
 
+    /// The `pageUrl` to RECORD at import time when the user left the field empty
+    /// — the mirror image of `sourcePage`, and deliberately next to it so the
+    /// two cannot drift apart.
+    ///
+    /// `sourcePage` says a `.channel` without a pageUrl is still refreshable via
+    /// its `url`. Recording the same value makes that fact explicit in the saved
+    /// stream (and gives the macOS export/deep-link update path a `pageUrl` to
+    /// match on), so a channel added by hand keeps its source page instead of
+    /// relying on the fallback forever.
+    ///
+    /// The `isLiteralManifest` term is load-bearing, not tidiness. A channel
+    /// added as `.../live.m3u8` has a url that IS the stream; recording it as the
+    /// pageUrl too would make every resolved value from `ChannelResolver`
+    /// (which prefers that direct manifest) compare EQUAL to the pageUrl, so the
+    /// post-resolve `refuseTainted` re-check in `StreamPlayer.play` would refuse
+    /// it — a channel that used to play would start saying "Failed". Only a
+    /// url that is genuinely a *page* (no manifest extension) is recorded.
+    ///
+    /// `.audio`/`.video` get nil: their url is the stream itself, and guessing a
+    /// page from a playable url would record a lie (card rule — no guessing).
+    static func recordedPageUrl(url: String, type: StreamType) -> String? {
+        guard type == .channel else { return nil }
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isLiteralManifest(trimmed) else { return nil }
+        return trimmed
+    }
+
     /// A literal HLS/DASH manifest is playable by construction, so it does not
     /// need the extra liveness probe a proxy-style URL does.
     ///

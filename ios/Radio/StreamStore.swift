@@ -47,8 +47,14 @@ final class StreamStore: ObservableObject {
         try? data.write(to: fileURL)
     }
 
-    func add(name: String, url: String, type: StreamType = .audio) {
-        streams.append(Stream(name: name, url: url, type: type))
+    /// Append a stream, persisting synchronously (see `save`).
+    ///
+    /// `pageUrl` is the *source page* a later refetch can scrape a fresh URL from
+    /// (see `RefetchMachine.sourcePage`) — recorded here so a stream added by hand
+    /// is not permanently refresh-less. Empty/whitespace arrives as nil so an
+    /// untouched field never saves an empty string as a page.
+    func add(name: String, url: String, type: StreamType = .audio, pageUrl: String? = nil) {
+        streams.append(Stream(name: name, url: url, type: type, pageUrl: pageUrl))
         save()
     }
 
