@@ -134,9 +134,87 @@ final class RefetchUITests: XCTestCase {
                        "stop left the failed bar on screen")
     }
 
+    // MARK: - A broken link must still offer Refresh (the user report)
+    //
+    // "i dont see the refresh stream if the link is broken." The bar is the only
+    // place Refresh lives, so this asserts the two halves of that sentence in the
+    // real app: the bar is on screen for a stream that never played, and its
+    // Refresh button is there AND still works after being tapped.
+    //
+    // Deterministic and network-free on purpose: a channel whose page is on a
+    // refused socket can never resolve (ChannelResolver's fetch fails
+    // immediately, and unlike an HLS url AVPlayer is never even asked), so the
+    // app lands in the terminal failed state in milliseconds with no dependence
+    // on a CDN behaving.
+
+    func testBrokenChannelLinkKeepsBarWithRefresh() throws {
+        // A channel whose url cannot answer: no manifest can ever be scraped, so
+        // this is `handleResolveFailure` — the path that used to leave isFailed
+        // false and the bar (with Refresh inside it) unmounted.
+        let name = try addStream(type: "Channel", url: "http://127.0.0.1:1/dead-page")
+        play(name: name)
+
+        // The channel handoff alert is the expected companion of this state
+        // ("This channel can't play in-app" → Safari). It is not what this test
+        // is about, so it is dismissed if present rather than asserted — the
+        // bar must be reachable either way.
+        if app.buttons["Cancel"].waitForExistence(timeout: 15) {
+            app.buttons["Cancel"].tap()
+        }
+
+        let bar = app.otherElements["playerBar"]
+        XCTAssertTrue(bar.waitForExistence(timeout: 30),
+                      "a channel whose link is broken left no player bar — the user's complaint: "
+                    + "Refresh lives only in that bar")
+
+        // The Refresh affordance, queried by AX label (bar buttons expose the
+        // label, not the identifier — see the note in the first test).
+        let refresh = app.buttons["Refresh"]
+        if !refresh.waitForExistence(timeout: 10) {
+            XCTFail("no Refresh for a broken channel that DOES have a source page "
+                  + "(its url is the page). Bar subtree:\n"
+                  + (bar.exists ? bar.debugDescription : "<bar gone>"))
+        }
+
+        // Tapping it must be a real lever, not a painted button: the resolve
+        // fails again (that is the point of the fixture) and the affordance has
+        // to survive for another try, along with Stop so the bar can be dismissed.
+        refresh.tap()
+        XCTAssertTrue(app.buttons["Refresh"].waitForExistence(timeout: 30)
+                        || app.buttons["Refreshing"].exists,
+                      "Refresh vanished after one tap on a broken link")
+        XCTAssertTrue(app.buttons["Stop"].waitForExistence(timeout: 10),
+                      "failed bar lacks Stop — the user could not dismiss it")
+
+        app.buttons["Stop"].tap()
+        XCTAssertFalse(app.otherElements["playerBar"].waitForExistence(timeout: 5),
+                       "stop left the failed bar on screen")
+    }
+
+    /// The import half of the report, at the UI level: a source page typed into
+    /// the add sheet must be what makes an otherwise-unrefreshable stream
+    /// refreshable. `testFailedStreamBarStaysWithoutRefresh` is the contrast —
+    /// the same audio stream WITHOUT a source page grows no Refresh button.
+    func testEnteredSourcePageMakesAnAudioStreamRefreshable() throws {
+        let name = try addStream(type: "Audio",
+                                url: "http://127.0.0.1:1/dead-audio.m3u8",
+                                pageUrl: "http://127.0.0.1:1/some-page")
+        play(name: name)
+
+        // Bar up as soon as playback is attempted; Refresh present because the
+        // sheet recorded a pageUrl (the stream type alone would not offer one).
+        XCTAssertTrue(app.otherElements["playerBar"].waitForExistence(timeout: 30),
+                      "no bar for a stream that was just started")
+        XCTAssertTrue(app.buttons["Refresh"].waitForExistence(timeout: 30),
+                      "the entered source page did not reach the stream — Refresh is the only "
+                    + "observable proof, and it is missing")
+
+        app.buttons["Stop"].tap()
+    }
+
     // MARK: - Helpers (same shape as VideoSurfaceUITests, plus a url argument)
 
-    private func addStream(type: String, url: String? = nil) throws -> String {
+    private func addStream(type: String, url: String? = nil, pageUrl: String? = nil) throws -> String {
         app.launch()
 
         let add = app.buttons["addStreamButton"]
@@ -152,6 +230,15 @@ final class RefetchUITests: XCTestCase {
         let urlField = app.textFields["addStreamURLField"]
         urlField.tap()
         urlField.typeText(url ?? sampleURL)
+
+        if let pageUrl {
+            // The field whose value decides whether Refresh will ever exist.
+            let pageField = app.textFields["addStreamPageUrlField"]
+            XCTAssertTrue(pageField.waitForExistence(timeout: 10),
+                          "the add sheet lost its source-page field")
+            pageField.tap()
+            pageField.typeText(pageUrl)
+        }
 
         app.buttons[type].tap()          // segmented picker: Audio / Video / Channel
         app.buttons["Save"].tap()
