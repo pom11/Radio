@@ -63,7 +63,10 @@ enum ChannelResolver {
     /// false negative only costs one GET.
     ///
     /// Query (`?`) and fragment (`#`) are dropped before the check so a token
-    /// or a player fragment cannot forge or hide the extension.
+    /// or a player fragment cannot forge or hide the extension: in a URL the
+    /// first `?` or `#` always ends the path, so taking the head of that split
+    /// is the path (garbage input just yields a short non-manifest string —
+    /// the safe direction).
     static func isLiteralManifest(_ candidate: String) -> Bool {
         let lower = candidate.lowercased()
         let path = lower.components(separatedBy: CharacterSet(charactersIn: "?#")).first ?? lower
