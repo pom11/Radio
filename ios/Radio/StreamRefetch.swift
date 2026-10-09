@@ -91,6 +91,22 @@ final class RefetchMachine {
         return stream.type == .channel ? stream.url : nil
     }
 
+    /// The *explicitly recorded* source page (a `pageUrl`), or nil when
+    /// `sourcePage` had to fall back to a channel's `url`.
+    ///
+    /// The distinction is a trust statement, not plumbing: a recorded `pageUrl`
+    /// was deliberately entered or imported as "the page this stream comes from",
+    /// so it is a PAGE by definition and identity with it is taint — whatever
+    /// extension it happens to end in. A page *inferred* from a channel url has
+    /// no such promise; that url may genuinely be a manifest the user pasted as
+    /// a "channel" (`.../live.m3u8`), and `ChannelResolver.isLiteralManifest` is
+    /// what decides. `outcome`'s identity exception consults this so the two
+    /// cases cannot be conflated by a substring check.
+    static func explicitSourcePage(of stream: Stream) -> String? {
+        let page = stream.pageUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return page.isEmpty ? nil : page
+    }
+
     /// True if a refresh could even be offered for this stream — drives whether
     /// the UI shows a Refresh control at all.
     static func canRefresh(_ stream: Stream) -> Bool {
@@ -117,29 +133,16 @@ final class RefetchMachine {
     ///
     /// `.audio`/`.video` get nil: their url is the stream itself, and guessing a
     /// page from a playable url would record a lie (card rule — no guessing).
+    ///
+    /// The predicate is `ChannelResolver.isLiteralManifest` — the app-wide one.
+    /// This call site must not grow its own extension test; if the two ever
+    /// disagree, import records a page for a url that the play path then treats
+    /// as a stream (the tvron `.php`-proxy bug class).
     static func recordedPageUrl(url: String, type: StreamType) -> String? {
         guard type == .channel else { return nil }
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isLiteralManifest(trimmed) else { return nil }
+        guard !trimmed.isEmpty, !ChannelResolver.isLiteralManifest(trimmed) else { return nil }
         return trimmed
-    }
-
-    /// A literal HLS/DASH manifest is playable by construction, so it does not
-    /// need the extra liveness probe a proxy-style URL does.
-    ///
-    /// Extension check, not `contains(".m3u8")` (which macOS and
-    /// ChannelResolver use): `.../y.m3u8isnotadir/proxy.php` contains the
-    /// substring but is a proxy, and this function's only job is to decide
-    /// whether it is SAFE TO SKIP that probe — so a false "manifest" is the
-    /// dangerous direction. A path segment must actually END in the extension.
-    /// When in doubt we answer false and the caller probes, which costs one
-    /// GET and can never save a dead URL.
-    static func isLiteralManifest(_ candidate: String) -> Bool {
-        let lower = candidate.lowercased()
-        let path = lower.components(separatedBy: "?").first ?? lower
-        return path.split(separator: "/").contains {
-            $0.hasSuffix(".m3u8") || $0.hasSuffix(".mpd")
-        }
     }
 
     // MARK: - Transitions
@@ -242,18 +245,39 @@ final class RefetchMachine {
         // an HTML page be saved as the playable url.
         let page = Self.sourcePage(of: stream)
         if StreamStore.refuseTainted(trimmed, pageUrl: page) {
-            // One exception, and only this one: a page that IS a literal
-            // manifest (a channel added as, say, `.../live.m3u8`). Then the
-            // resolver handing the page back is not a fall-through — the page
-            // genuinely is the stream (ChannelResolver treats a direct manifest
-            // as playable, and play() plays it). Identity with a NON-manifest
-            // page stays tainted: that is the observed bug — HTML saved as url.
-            if trimmed == page, Self.isLiteralManifest(page ?? "") {
+            // One exception, and only this one — and it asks the SAME predicate
+            // the play path asks (`ChannelResolver.isLiteralManifest`), never a
+            // local string check. If the two ever disagreed, this path and the
+            // play path would accept different URLs for one stream, which is the
+            // tvron `.php`-proxy bug class this card removes.
+            //
+            // The exception: a page that IS a literal manifest (a channel added
+            // as `.../live.m3u8`). Then the resolver handing the page back is
+            // not a fall-through — the page genuinely is the stream
+            // (ChannelResolver treats a direct manifest as playable, and play()
+            // plays it).
+            //
+            // `explicitPage` narrows it: the exception applies only when the page
+            // was *inferred* from the stream's own url (a `.channel` with no
+            // recorded pageUrl — `sourcePage`'s fallback). When a pageUrl was
+            // deliberately recorded (or imported) it is a page BY DEFINITION, so
+            // identity with it is tainted even when it ends in `.m3u8`: sites do
+            // serve an HTML page (or a proxy) at a manifest-shaped URL, and
+            // persisting that would replace a working url with HTML. The cost of
+            // the narrow direction is only that Refresh on such a stream says
+            // "Refresh failed" while the existing url survives — an honest,
+            // recoverable answer. Identity with a NON-manifest page stays
+            // tainted either way: that is the observed bug — HTML saved as url.
+            let explicitPage = Self.explicitSourcePage(of: stream) != nil
+            if trimmed == page, !explicitPage, ChannelResolver.isLiteralManifest(page ?? "") {
                 return .persist(trimmed)
             }
             return .rejected(trimmed)
         }
-        if !Self.isLiteralManifest(trimmed) && !verified {
+        // A literal manifest is playable by construction, so it skips the
+        // liveness probe; anything else (a `.php` proxy, a page-shaped URL)
+        // must have been verified by the caller.
+        if !ChannelResolver.isLiteralManifest(trimmed) && !verified {
             return .rejected(trimmed)
         }
         return .persist(trimmed)

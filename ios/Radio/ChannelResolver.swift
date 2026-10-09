@@ -42,13 +42,40 @@ enum ChannelResolver {
         return extractManifest(from: html)
     }
 
-    /// True if the candidate looks like a literal HLS/DASH manifest URL
-    /// (`.m3u8` / `.mpd`), i.e. already directly playable.
-    static func directManifest(_ candidate: String) -> String? {
+    /// THE app-wide answer to "is this URL a literal HLS/DASH manifest
+    /// (`.m3u8` / `.mpd`), i.e. already directly playable?"
+    ///
+    /// This is the ONE predicate for that question — every play / refresh /
+    /// import / taint-guard call site must ask it and none may re-derive the
+    /// answer from its own string search. It used to be asked two different
+    /// ways (`ChannelResolver.directManifest` with `contains`, and
+    /// `RefetchMachine.isLiteralManifest` with an extension check), and the two
+    /// could disagree: one call site would hand a `.php` proxy to AVPlayer as if
+    /// it were a manifest while another refused to refetch the same URL. That
+    /// disagreement is the tvron `.php`-proxy class of bugs (macOS t_2a758903)
+    /// and the iOS "never persist pageUrl as url" taint guard.
+    ///
+    /// Extension check, not `contains(".m3u8")`: `.../y.m3u8isnotadir/proxy.php`
+    /// contains the substring but is a proxy. A path segment must actually END
+    /// in the extension. When in doubt we answer false — the callers treat
+    /// "literal manifest" as "safe to skip the liveness probe and to accept
+    /// without refetching", so a false positive is the dangerous direction and a
+    /// false negative only costs one GET.
+    ///
+    /// Query (`?`) and fragment (`#`) are dropped before the check so a token
+    /// or a player fragment cannot forge or hide the extension.
+    static func isLiteralManifest(_ candidate: String) -> Bool {
         let lower = candidate.lowercased()
-        let path = lower.components(separatedBy: "?").first ?? lower
-        guard path.contains(".m3u8") || path.contains(".mpd") else { return nil }
-        return candidate
+        let path = lower.components(separatedBy: CharacterSet(charactersIn: "?#")).first ?? lower
+        return path.split(separator: "/").contains {
+            $0.hasSuffix(".m3u8") || $0.hasSuffix(".mpd")
+        }
+    }
+
+    /// The candidate itself if it is a literal manifest (see
+    /// `isLiteralManifest`), else nil — the shape the resolve path wants.
+    static func directManifest(_ candidate: String) -> String? {
+        isLiteralManifest(candidate) ? candidate : nil
     }
 
     /// Fetch a page's HTML with a browser-like User-Agent (many sites 4xx a bare
@@ -76,15 +103,22 @@ enum ChannelResolver {
     /// Ported from the macOS StreamProbe.scrapeStreamURL (no subprocess, so the
     /// yt-dlp / DAI branches are dropped — only the literal-manifest extraction
     /// applies, which is the App-Store-safe part).
+    ///
+    /// The regex FINDS a candidate; `isLiteralManifest` DECIDES it. A match that
+    /// the app-wide predicate would not call a manifest (e.g. a `.php` proxy with
+    /// `.m3u8` buried in its query — the tvron bug class) is not handed back as
+    /// one: the caller then falls through to open-in-browser / refetch instead of
+    /// feeding a proxy to AVPlayer as if it were a playlist.
     static func extractManifest(from html: String) -> String? {
         for pattern in [m3u8Pattern, mpdPattern] {
-            guard let regex = try? NSRegularExpression(pattern: pattern),
-                  let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-                  match.numberOfRanges > 1,
-                  let range = Range(match.range(at: 1), in: html) else { continue }
-            // Strip any trailing quote/space the loose regex may have captured.
-            let raw = String(html[range]).trimmingCharacters(in: CharacterSet(charactersIn: "\"\\ "))
-            if !raw.isEmpty { return raw }
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            for match in regex.matches(in: html, range: NSRange(html.startIndex..., in: html)) {
+                guard match.numberOfRanges > 1,
+                      let range = Range(match.range(at: 1), in: html) else { continue }
+                // Strip any trailing quote/space the loose regex may have captured.
+                let raw = String(html[range]).trimmingCharacters(in: CharacterSet(charactersIn: "\"\\ "))
+                if !raw.isEmpty, isLiteralManifest(raw) { return raw }
+            }
         }
         return nil
     }

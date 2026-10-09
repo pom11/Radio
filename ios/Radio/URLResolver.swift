@@ -30,9 +30,22 @@ enum URLResolver {
         let videoPatterns = [
             "youtube.com/watch", "youtube.com/live", "youtu.be/",
             "vimeo.com/", "dailymotion.com/",
-            ".mp4", ".mkv", ".webm", ".m3u8", ".mpd",
+            ".mp4", ".mkv", ".webm",
         ]
         if videoPatterns.contains(where: { lower.contains($0) }) {
+            return .video
+        }
+        // The literal-manifest question is asked by the ONE app-wide predicate
+        // (see ChannelResolver.isLiteralManifest), not by another
+        // `contains(".m3u8")` entry here — a `.php` proxy with `.m3u8` buried in
+        // its path or query is not a manifest, and must not be typed as one by
+        // import while the play path refuses it (the tvron bug class). It falls
+        // through to this function's neutral `.audio` default instead.
+        //
+        // Deliberately AFTER the audio patterns, as it was before: HLS-audio
+        // radio endpoints (`...:8000/live.m3u8`) are the common case in a radio
+        // app and must stay `.audio`, or they would get a video panel.
+        if ChannelResolver.isLiteralManifest(lower) {
             return .video
         }
 

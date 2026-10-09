@@ -442,8 +442,11 @@ final class StreamPlayer: NSObject, ObservableObject, NowPlayingCommandDelegate 
             self.isRefreshing = false
             guard !Task.isCancelled, stillCurrent else { return }
 
+            // Same predicate as the judgement below and as ChannelResolver's own
+            // direct-manifest shortcut — one URL cannot be "a manifest" here and
+            // "a proxy" there.
             let verified: Bool
-            if RefetchMachine.isLiteralManifest(candidate ?? "") {
+            if ChannelResolver.isLiteralManifest(candidate ?? "") {
                 verified = true
             } else if let candidate {
                 verified = await self.verifyURL(candidate)

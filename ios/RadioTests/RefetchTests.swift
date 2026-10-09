@@ -49,12 +49,15 @@ final class RefetchTests: XCTestCase {
         XCTAssertNil(RefetchMachine.sourcePage(of: s))
     }
 
+    /// The single app-wide predicate (see `LiteralManifestTests` for the full
+    /// cross-call-site contract). Renamed here from `RefetchMachine.isLiteralManifest`
+    /// when the second, disagreeing copy of this check was deleted.
     func testLiteralManifestDetection() {
-        XCTAssertTrue(RefetchMachine.isLiteralManifest("https://x/y/stream.m3u8"))
-        XCTAssertTrue(RefetchMachine.isLiteralManifest("https://x/y/STREAM.M3U8?token=1"))
-        XCTAssertTrue(RefetchMachine.isLiteralManifest("https://x/y/manifest.mpd"))
-        XCTAssertFalse(RefetchMachine.isLiteralManifest("https://x/y/proxy.php"))
-        XCTAssertFalse(RefetchMachine.isLiteralManifest("https://x/y.m3u8isnotadir/proxy.php"))
+        XCTAssertTrue(ChannelResolver.isLiteralManifest("https://x/y/stream.m3u8"))
+        XCTAssertTrue(ChannelResolver.isLiteralManifest("https://x/y/STREAM.M3U8?token=1"))
+        XCTAssertTrue(ChannelResolver.isLiteralManifest("https://x/y/manifest.mpd"))
+        XCTAssertFalse(ChannelResolver.isLiteralManifest("https://x/y/proxy.php"))
+        XCTAssertFalse(ChannelResolver.isLiteralManifest("https://x/y.m3u8isnotadir/proxy.php"))
     }
 
     // MARK: - Re-entrancy guard
