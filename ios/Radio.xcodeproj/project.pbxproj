@@ -15,6 +15,7 @@
 		2B04A0F2C82F3C3AC15EFB0A /* PictureInPicture.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC075B35FEF20313AF96F4B2 /* PictureInPicture.swift */; };
 		2D53493039F67AF9B118B85D /* StreamPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B363BA1BD48B3BF26FC1CE51 /* StreamPlayer.swift */; };
 		2EC04D7A9E768A111573A775 /* QRScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD67A18C9CEECA7A26393D60 /* QRScanView.swift */; };
+		37D3159B46765FFF7A00EC59 /* CarPlayRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA5B2F84A9EF8D94E91E752 /* CarPlayRefreshTests.swift */; };
 		733D5B9F996166A6998899CC /* SafariView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB6510B8D15525CB33A105A8 /* SafariView.swift */; };
 		7AACE6C760396F59D9C1AC61 /* LiteralManifestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E43415F88EEDCE6E2FA3B6F /* LiteralManifestTests.swift */; };
 		7C18F643D96B402089DA33F6 /* StreamRefetch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3592D7C48D94252502A6B816 /* StreamRefetch.swift */; };
@@ -41,6 +42,7 @@
 		E0A277D42F1AC3A25DE863C4 /* QRScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E003833D145A418C5E884ED /* QRScanSession.swift */; };
 		EF0A208C02EE5D6021470EC6 /* StreamStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAF2F2ACA8302D306F04B25 /* StreamStoreTests.swift */; };
 		F84A0C7ED00E7D05B13E378C /* NowPlayingInfoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6197E8786DD7C1FA4375EBF /* NowPlayingInfoTests.swift */; };
+		FA8041E873DD67DF794E08A1 /* CarPlayRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 715CCB0B43A554442F549FE9 /* CarPlayRefresh.swift */; };
 		FB07E31546D548B242D8C5B6 /* CarPlayAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */; };
 /* End PBXBuildFile section */
 
@@ -76,10 +78,12 @@
 		5E003833D145A418C5E884ED /* QRScanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanSession.swift; sourceTree = "<group>"; };
 		625A72E09F00952584CB45CF /* VideoSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurfaceTests.swift; sourceTree = "<group>"; };
 		6667DFCFD315B9842A8F446E /* PlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerManager.swift; sourceTree = "<group>"; };
+		715CCB0B43A554442F549FE9 /* CarPlayRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayRefresh.swift; sourceTree = "<group>"; };
 		80908BC8714E2E47B5928B75 /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
 		81698D1C912AFD96176673B8 /* VideoFullscreenPiPTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFullscreenPiPTests.swift; sourceTree = "<group>"; };
 		81C0903AC6C3129100D7414E /* AddStreamSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStreamSheet.swift; sourceTree = "<group>"; };
 		8A605F49F29EC3611BE494C4 /* AirPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPlay.swift; sourceTree = "<group>"; };
+		8CA5B2F84A9EF8D94E91E752 /* CarPlayRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayRefreshTests.swift; sourceTree = "<group>"; };
 		901C24BADDC23DCE2E11D16C /* RadioUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RadioUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		917C90BFB6DB898BB5FE4DC2 /* PlayerBarPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerBarPolicy.swift; sourceTree = "<group>"; };
 		9A377F42AC8B079CA54DF5AD /* VideoFullscreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFullscreenUITests.swift; sourceTree = "<group>"; };
@@ -118,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				9DD27C54C856C9F0CF78B9E6 /* BrokenLinkRefreshTests.swift */,
+				8CA5B2F84A9EF8D94E91E752 /* CarPlayRefreshTests.swift */,
 				AB4C79844330CA8D7646B851 /* ChannelResolverTests.swift */,
 				3E43415F88EEDCE6E2FA3B6F /* LiteralManifestTests.swift */,
 				B6197E8786DD7C1FA4375EBF /* NowPlayingInfoTests.swift */,
@@ -157,6 +162,7 @@
 				81C0903AC6C3129100D7414E /* AddStreamSheet.swift */,
 				8A605F49F29EC3611BE494C4 /* AirPlay.swift */,
 				9E2D912CC2CA888562D5B4CC /* CarPlayAppDelegate.swift */,
+				715CCB0B43A554442F549FE9 /* CarPlayRefresh.swift */,
 				FD69118C654D6B3BE0F91293 /* CarPlaySceneDelegate.swift */,
 				E447DF05519267E103F32060 /* ChannelResolver.swift */,
 				4D087376958BC2DFA13D92BC /* ContentView.swift */,
@@ -300,6 +306,7 @@
 				8F995DD7123657236DB3B8F0 /* AddStreamSheet.swift in Sources */,
 				0805E8B9BCABC2466CC85374 /* AirPlay.swift in Sources */,
 				FB07E31546D548B242D8C5B6 /* CarPlayAppDelegate.swift in Sources */,
+				FA8041E873DD67DF794E08A1 /* CarPlayRefresh.swift in Sources */,
 				E09FAC23719DBA0C042364BE /* CarPlaySceneDelegate.swift in Sources */,
 				CA354657A65EC89C6616A869 /* ChannelResolver.swift in Sources */,
 				A2E26CD0612A8BEF44A9470F /* ContentView.swift in Sources */,
@@ -327,6 +334,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A668B39D42FCE5F637D262C8 /* BrokenLinkRefreshTests.swift in Sources */,
+				37D3159B46765FFF7A00EC59 /* CarPlayRefreshTests.swift in Sources */,
 				AF2C6A2A82C006045F7EBFEE /* ChannelResolverTests.swift in Sources */,
 				7AACE6C760396F59D9C1AC61 /* LiteralManifestTests.swift in Sources */,
 				F84A0C7ED00E7D05B13E378C /* NowPlayingInfoTests.swift in Sources */,

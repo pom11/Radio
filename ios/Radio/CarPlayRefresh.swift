@@ -87,7 +87,7 @@ enum CarPlayListPolicy {
     /// is complaining about. `RefetchMachine.canRefresh` is the same gate the
     /// phone's player bar uses, so CarPlay can never offer a Refresh that would
     /// only come back "No source page to refetch from".
-    static func refreshTarget(in streams: [Radio.Stream], state: CarPlayListState) -> Radio.Stream? {
+    static func refreshTarget(in streams: [Stream], state: CarPlayListState) -> Stream? {
         guard let id = state.currentID,
               let stream = streams.first(where: { $0.id == id }),
               RefetchMachine.canRefresh(stream) else { return nil }
@@ -101,7 +101,7 @@ enum CarPlayListPolicy {
     /// flight. The in-flight term mirrors the bar's `disabled(isRefreshing)`
     /// spinner; the machine would refuse a second refresh anyway, but a driver
     /// should not be able to ask twice.
-    static func refreshEnabled(state: CarPlayListState, target: Radio.Stream?) -> Bool {
+    static func refreshEnabled(state: CarPlayListState, target: Stream?) -> Bool {
         target != nil && !state.isRefreshing
     }
 }

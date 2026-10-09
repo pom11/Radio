@@ -72,7 +72,9 @@ final class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         interfaceController.delegate = self
         lastView = nil
         mountedRoot = nil
-        syncTemplate(force: true)
+        // `lastView` is nil, so the dedupe below cannot short-circuit the first
+        // mount — no `force` flag needed.
+        syncTemplate()
 
         // Keep the CarPlay list current. CarPlay templates do NOT observe
         // SwiftUI/Combine state — they are value snapshots handed to the head
@@ -86,10 +88,10 @@ final class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         // synchronously — a synchronous read here would render one step stale.
         let storeChanges = StreamStore.shared.$streams.map { _ in () }
         let playerChanges = PlayerManager.shared.objectWillChange.map { _ in () }
-        // `Publishers.merge` (not MergeMany) because the two publishers are
-        // different concrete types — MergeMany requires one.
-        syncCancellable = Publishers.merge(storeChanges.eraseToAnyPublisher(),
-                                           playerChanges.eraseToAnyPublisher())
+        // `.merge(with:)`, not `Publishers.MergeMany`: the two upstreams are
+        // different concrete publisher types and MergeMany requires one.
+        syncCancellable = storeChanges
+            .merge(with: playerChanges)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.syncTemplate()
@@ -125,11 +127,20 @@ final class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
     ///    exists to prevent. When something deeper is on top the rebuild is simply
     ///    *skipped*, leaving `lastView` stale, so the next change (or popping back,
     ///    see `templateDidAppear`) repaints it.
-    private func syncTemplate(force: Bool = false) {
+    private func syncTemplate() {
         guard let ic = interfaceController else { return }
         let view = CarPlayListView.current
-        if !force, view == lastView { return }
+        if view == lastView { return }
         if let top = ic.topTemplate, let mounted = mountedRoot, top !== mounted {
+            // Something deeper (Now Playing) is on screen. Do NOT record the view
+            // as rendered — the list was never repainted, and recording it would
+            // make the deferred rebuild in `templateDidAppear` think it had
+            // already happened.
+            //
+            // We can still give feedback on that screen without touching
+            // navigation: refresh the Now Playing button's enabled state, so it
+            // greys out while a refetch is in flight instead of looking tappable.
+            applyNowPlayingButtons(for: view)
             return
         }
         lastView = view
@@ -222,12 +233,26 @@ final class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
     /// because the template is a singleton and `updateNowPlayingButtons` replaces
     /// the whole array.
     private func pushNowPlaying() {
-        let nowPlaying = CPNowPlayingTemplate.shared
+        applyNowPlayingButtons(for: CarPlayListView.current)
+        interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true, completion: nil)
+    }
+
+    /// Install (or re-install) the Refresh button on the Now Playing template.
+    ///
+    /// Rebuilt on every sync rather than mutated, because
+    /// `updateNowPlayingButtons` replaces the whole array anyway and
+    /// `CPNowPlayingButton.isEnabled` would otherwise be the only live signal the
+    /// driver gets while a refetch runs (the template itself shows no status text
+    /// we control). `CPNowPlayingTemplate` is a singleton, so this works whether
+    /// or not the template is currently on screen.
+    private func applyNowPlayingButtons(for view: CarPlayListView) {
         let refresh = CPNowPlayingImageButton(image: Self.refreshImage) { [weak self] _ in
             self?.refreshSelected()
         }
-        nowPlaying.updateNowPlayingButtons([refresh])
-        interfaceController?.pushTemplate(nowPlaying, animated: true, completion: nil)
+        refresh.isEnabled = CarPlayListPolicy.refreshEnabled(
+            state: view.state,
+            target: CarPlayListPolicy.refreshTarget(in: view.streams, state: view.state))
+        CPNowPlayingTemplate.shared.updateNowPlayingButtons([refresh])
     }
 }
 
